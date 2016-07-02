@@ -29,7 +29,7 @@ brew install cmake
 Install Dependencies:
 
 ```bash
-nrew install enet
+brew install enet
 ```
 
 ## Build
