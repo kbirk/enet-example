@@ -22,7 +22,11 @@ include_directories(${ENET_INCLUDE_DIRS})
 ## Client Executable
 
 # Add source files
-set(client_sources "src/client.cpp")
+set(client_sources
+	"src/net/Client.cpp"
+	"src/net/Message.cpp"
+	"src/Common.cpp"
+	"src/client.cpp")
 # Construct the executable
 add_executable(client ${client_sources})
 # Link the executable to  libraries
@@ -31,7 +35,11 @@ target_link_libraries(client ${ENET_LIBRARIES})
 ## Server Executable
 
 # Add source files
-set(server_sources "src/server.cpp")
+set(server_sources
+	"src/net/Server.cpp"
+	"src/net/Message.cpp"
+	"src/Common.cpp"
+	"src/server.cpp")
 # Construct the executable
 add_executable(server ${server_sources})
 # Link the executable to  libraries

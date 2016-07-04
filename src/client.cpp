@@ -1,133 +1,86 @@
-#include <enet/enet.h>
-#include <iostream>
-#include <cstring>
-#include <string>
-#include <ctime>
+#include "Common.h"
+#include "Log.h"
+#include "net/Client.h"
+#include "net/Message.h"
 
-const char* HOST = "localhost";
+#include <algorithm>
+#include <csignal>
+#include <iostream>
+#include <string>
+#include <thread>
+
+const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
-const uint32_t STEP_MS = 16;
+const uint64_t STEP_MS = 1000;
+
+bool quit = false;
+
+Client::Shared client;
+
+void signal_handler(int32_t signal) {
+	LOG_DEBUG("Caught signal: " << signal << ", shutting down...");
+	quit = true;
+}
 
 int main(int argc, char** argv) {
 
 	std::srand(std::time(0));
 
-	if (enet_initialize() != 0) {
-		std::cout << "An error occurred while initializing ENet" << std::endl;
+	std::signal(SIGINT, signal_handler);
+	std::signal(SIGQUIT, signal_handler);
+	std::signal(SIGTERM, signal_handler);
+
+	client = Client::alloc();
+
+	if (client->connect(HOST, PORT)) {
 		return 1;
 	}
 
-	ENetHost* client = enet_host_create(
-		NULL, // create a client host
-		1, // only allow 1 outgoing connection
-		2, // allow up 2 channels to be used, 0 and 1
-		0, // assume any amount of incoming bandwidth
-		0); // assume any amount of outgoing bandwidth
+	std::time_t last = timestamp();
 
-	if (client == NULL) {
-		std::cout << "An error occurred while trying to create an ENet client host" << std::endl;
-		return 1;
-	}
+	while (!quit) {
 
-	// Connect to the host
-	ENetAddress address;
-	enet_address_set_host(&address, HOST);
-	address.port = PORT;
+		std::time_t stamp = timestamp();
 
-	// Initiate the connection, allocating the two channels 0 and 1.
-	ENetPeer* peer = enet_host_connect(client, &address, 2, 0);
-	if (peer == NULL) {
-		std::cout << "No available peers for initiating an ENet connection" << std::endl;
-		return 1;
-	}
+		// poll for events
+		auto messages = client->poll();
 
-	ENetEvent event;
-
-	// Wait up to 5 seconds for the connection attempt to succeed.
-	if (enet_host_service(client, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
-		std::cout << "Connection to `" << HOST << ":" << PORT << "` succeeded" << std::endl;
-
-		std::string msg = "A hoy hoy, I am a client, this is my initial message id=" + std::to_string(std::rand());
-
-		// Create a reliable packet
-		ENetPacket* packet = enet_packet_create(
-			msg.c_str(),
-			msg.size(),
-			ENET_PACKET_FLAG_RELIABLE);
-
-		// Send the packet to the peer over channel id 0
-		enet_peer_send(peer, 0, packet);
-
-		// One could just use enet_host_service() instead
-		enet_host_flush(client);
-
-		// Step
-		while (enet_host_service(client, &event, STEP_MS) >= 0) {
-			switch (event.type) {
-
-				case ENET_EVENT_TYPE_RECEIVE:
-					std::cout << "A packet of length " << event.packet->dataLength
-						<< " containing `" << event.packet->data
-						<< "` was received from " << event.peer->incomingPeerID
-						<< " on channel " << event.channelID
-						<< std::endl;
-
-					// Create message
-					msg = "I am a client, this is my response id=" + std::to_string(std::rand());
-					// Create a reliable packet
-					packet = enet_packet_create(
-						msg.c_str(),
-						msg.size() + 1,
-						ENET_PACKET_FLAG_RELIABLE);
-					// Send the packet to the peer over channel id 0
-					enet_peer_send(event.peer, 0, packet);
-					// One could just use enet_host_service() instead
-					enet_host_flush(client);
-					// Clean up the packet now that we're done using it.
-					enet_packet_destroy(event.packet);
-					break;
-
-				case ENET_EVENT_TYPE_CONNECT:
-				case ENET_EVENT_TYPE_DISCONNECT:
-				case ENET_EVENT_TYPE_NONE:
-					break;
-
+		// process events
+		for (auto msg : messages) {
+			if (msg->type() == MessageType::DISCONNECT) {
+				// attempt to reconnect
+				while (!quit) {
+					LOG_DEBUG("Attempting to re-connect to server...");
+					if (!client->connect(HOST, PORT)) {
+						// success
+						stamp = timestamp();
+						last = stamp;
+						break;
+					}
+				}
+				// ignore other messages
+				break;
 			}
 		}
 
-		// Disconnect
-		enet_peer_disconnect(peer, 0);
+		// send message to server
+		std::string msg = "I am a client, this is my msg id=" + std::to_string(std::rand());
+		client->send(msg.c_str(), msg.size());
 
-		// Allow up to 3 seconds for the disconnect to succeed
-		// and drop any packets received packets.
-		while (enet_host_service(client, &event, 3000) > 0) {
-			switch (event.type) {
-				case ENET_EVENT_TYPE_RECEIVE:
-					enet_packet_destroy(event.packet);
-					break;
+		// determine elapsed time to calc sleep for next frame
+		std::time_t now = timestamp();
+		std::time_t elapsed = now - stamp;
 
-				case ENET_EVENT_TYPE_DISCONNECT:
-					std::cout << "Disconnection succeeded" << std::endl;
-					break;
-
-				case ENET_EVENT_TYPE_NONE:
-				case ENET_EVENT_TYPE_CONNECT:
-					break;
-			}
+		// sleep
+		if (elapsed < STEP_MS) {
+			sleepMS(STEP_MS - elapsed);
 		}
-		// We've arrived here, so the disconnect attempt didn't
-		// succeed yet.  Force the connection down
-		enet_peer_reset(peer);
 
-	} else {
-		// Either the 5 seconds are up or a disconnect event was
-		// received. Reset the peer in the event the 5 seconds
-		// had run out without any significant event
-		enet_peer_reset(peer);
-		std::cout << "Connection to `" << HOST << ":" << PORT << "` failed" << std::endl;
+		// debug
+		now = timestamp();
+		LOG_INFO("Tick of " << (now - last) << "ms... ");
+		last = now;
 	}
 
-	enet_host_destroy(client);
-
-	enet_deinitialize();
+	client->disconnect();
 }

@@ -1,84 +1,72 @@
-#include <enet/enet.h>
-#include <iostream>
-#include <cstring>
-#include <string>
-#include <ctime>
+#include "Common.h"
+#include "Log.h"
+#include "net/Message.h"
+#include "net/Server.h"
 
-const char* HOST = "localhost";
+#include <algorithm>
+#include <csignal>
+#include <iostream>
+#include <string>
+#include <thread>
+
 const uint32_t PORT = 7000;
-const uint32_t STEP_MS = 16;
+const uint64_t STEP_MS = 2000;
+
+bool quit = false;
+
+Server::Shared server;
+
+void signal_handler(int32_t signal) {
+	LOG_DEBUG("Caught signal: " << signal << ", shutting down...");
+	quit = true;
+}
 
 int main(int argc, char** argv) {
 
 	std::srand(std::time(0));
 
-	if (enet_initialize() != 0) {
-		std::cout << "An error occurred while initializing ENet" << std::endl;
+	std::signal(SIGINT, signal_handler);
+	std::signal(SIGQUIT, signal_handler);
+	std::signal(SIGTERM, signal_handler);
+
+	server = Server::alloc();
+
+	if (server->start(PORT)) {
 		return 1;
 	}
 
-	ENetAddress address;
-	enet_address_set_host(&address, HOST);
-	address.port = PORT;
+	std::time_t last = timestamp();
 
-	ENetHost* server = enet_host_create(
-		&address, // the address to bind the server host to
-		32, // allow up to 32 clients and/or outgoing connections
-		2, // allow up to 2 channels to be used, 0 and 1
-		0, // assume any amount of incoming bandwidth
-		0); // assume any amount of outgoing bandwidth
+	while (!quit) {
 
-	if (server == NULL) {
-		std::cout << "An error occurred while trying to create an ENet server host" << std::endl;
-		return 1;
-	}
+		std::time_t stamp = timestamp();
 
-	ENetEvent event;
-	ENetPacket* packet;
-	std::string msg;
+		// poll for events
+		auto messages = server->poll();
 
-	// Step
-	while (enet_host_service(server, &event, STEP_MS) >= 0) {
-		switch (event.type) {
-			case ENET_EVENT_TYPE_CONNECT:
-				std::cout << "A new client connected from "
-					<< event.peer->address.host << ":"
-					<< event.peer->address.port
-					<< std::endl;
-				break;
-
-			case ENET_EVENT_TYPE_RECEIVE:
-				std::cout << "A packet of length " << event.packet->dataLength
-					<< " containing `" << event.packet->data
-					<< "` was received from " << event.peer->incomingPeerID
-					<< " on channel " << event.channelID
-					<< std::endl;
-				// Create message
-				msg = "I am the server, this is my response id=" + std::to_string(std::rand());
-				// Create a reliable packet
-				packet = enet_packet_create(
-					msg.c_str(),
-					msg.size() + 1,
-					ENET_PACKET_FLAG_RELIABLE);
-				// Send the packet to the peer over channel id 0
-				enet_peer_send(event.peer, 0, packet);
-				// One could just use enet_host_service() instead
-				enet_host_flush(server);
-				// Clean up the packet now that we're done using it.
-				enet_packet_destroy(event.packet);
-				break;
-
-			case ENET_EVENT_TYPE_DISCONNECT:
-				std::cout << event.peer->data << " disconnected" << std::endl;
-				break;
-
-			case ENET_EVENT_TYPE_NONE:
-				break;
-
+		// process events
+		if (!messages.empty()) {
+			LOG_INFO(messages.size() << " messages received");
 		}
+
+		// broadcast to all clients
+		std::string msg = "I am the server this is my response=" + std::to_string(std::rand());
+		server->broadcast(msg.c_str(), msg.size());
+
+		// determine elapsed time to calc sleep for next frame
+		std::time_t now = timestamp();
+		std::time_t elapsed = now - stamp;
+
+		// sleep
+		if (elapsed < STEP_MS) {
+			sleepMS(STEP_MS - elapsed);
+		}
+
+		// debug
+		now = timestamp();
+		LOG_INFO("Tick of " << (now - last) << "ms... ");
+		last = now;
 	}
 
-	enet_host_destroy(server);
-
-	enet_deinitialize();
+	server->stop();
 }
