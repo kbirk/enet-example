@@ -48,6 +48,8 @@ int main(int argc, char** argv) {
 		// process events
 		for (auto msg : messages) {
 			if (msg->type() == MessageType::DISCONNECT) {
+				// sleep
+				sleepMS(STEP_MS);
 				// attempt to reconnect
 				while (!quit) {
 					LOG_DEBUG("Attempting to re-connect to server...");

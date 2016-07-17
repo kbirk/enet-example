@@ -4,6 +4,8 @@
 #include "Log.h"
 #include "net/Packet.h"
 
+const uint32_t TIMEOUT = 60000;
+
 Server::Shared Server::alloc() {
 	return std::make_shared<Server>();
 }
@@ -63,6 +65,7 @@ bool Server::stop() {
 		enet_peer_disconnect(client, 0);
 	}
 	// wait for the disconnections to be acknowledged
+	auto t = timestamp();
 	ENetEvent event;
 	while (enet_host_service(host_, &event, CONNECTION_TIMEOUT_MS) > 0) {
 		if (event.type == ENET_EVENT_TYPE_RECEIVE) {
@@ -87,6 +90,10 @@ bool Server::stop() {
 			// add and remove client
 			addClient(event.peer);
 			enet_peer_disconnect(event.peer, 0);
+		}
+		if (timestamp() - t > TIMEOUT) {
+			LOG_DEBUG("Forcing disconnect with " << clients_.size() << " clients");
+			break;
 		}
 	}
 	return 0;
@@ -130,7 +137,6 @@ void Server::addClient(ENetPeer* peer) {
 	}
 	// add to client map
 	clients_[peer->incomingPeerID] = peer;
-	LOG_DEBUG(clients_.size() << " clients now");
 }
 
 void Server::removeClient(ENetPeer* peer) {

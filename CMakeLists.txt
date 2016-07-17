@@ -27,6 +27,7 @@ set(client_sources
 	"src/net/Message.cpp"
 	"src/net/Packet.cpp"
 	"src/Common.cpp"
+	"src/Log.cpp"
 	"src/client.cpp")
 # Construct the executable
 add_executable(client ${client_sources})
@@ -41,6 +42,7 @@ set(server_sources
 	"src/net/Message.cpp"
 	"src/net/Packet.cpp"
 	"src/Common.cpp"
+	"src/Log.cpp"
 	"src/server.cpp")
 # Construct the executable
 add_executable(server ${server_sources})

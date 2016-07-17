@@ -2,6 +2,9 @@
 
 #include <cstring>
 #include <iostream>
+#include <iomanip>
+#include <ctime>
+#include <sstream>
 
 /**
  * Logging levels
@@ -71,6 +74,8 @@ void log(const char* level, const char* file, const char* time, int32_t line, co
 	LOGGING_OUT << std::endl;
 }
 
+std::string getTime();
+
 /**
  * Logging level macros
  */
@@ -88,25 +93,25 @@ void log(const char* level, const char* file, const char* time, int32_t line, co
  * Logging macros based on logging level
  */
 #if LOGGING_LEVEL <= DEBUG_LEVEL
-	#define LOG_DEBUG(x) (log(DEBUG_STR, __FILENAME__, __TIME__, __LINE__, LogData<None>() << x))
+	#define LOG_DEBUG(x) (log(DEBUG_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
 #else
 	#define LOG_DEBUG(x)
 #endif
 
 #if LOGGING_LEVEL <= INFO_LEVEL
-	#define LOG_INFO(x) (log(INFO_STR, __FILENAME__, __TIME__, __LINE__, LogData<None>() << x))
+	#define LOG_INFO(x) (log(INFO_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
 #else
 	#define LOG_INFO(x)
 #endif
 
 #if LOGGING_LEVEL <= WARN_LEVEL
-	#define LOG_WARN(x) (log(WARN_STR, __FILENAME__, __TIME__, __LINE__, LogData<None>() << x))
+	#define LOG_WARN(x) (log(WARN_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
 #else
 	#define LOG_WARN(x)
 #endif
 
 #if LOGGING_LEVEL <= ERROR_LEVEL
-	#define LOG_ERROR(x) (log(ERROR_STR, __FILENAME__, __TIME__, __LINE__, LogData<None>() << x))
+	#define LOG_ERROR(x) (log(ERROR_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
 #else
 	#define LOG_ERROR(x)
 #endif
