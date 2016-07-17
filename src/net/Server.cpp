@@ -1,6 +1,8 @@
 #include "net/Server.h"
 
+#include "Common.h"
 #include "Log.h"
+#include "net/Packet.h"
 
 Server::Shared Server::alloc() {
 	return std::make_shared<Server>();
@@ -60,8 +62,6 @@ bool Server::stop() {
 		// disconnect the client
 		enet_peer_disconnect(client, 0);
 	}
-	// track how many clients to disconnect
-	uint32_t remainingClients = clients_.size();
 	// wait for the disconnections to be acknowledged
 	ENetEvent event;
 	while (enet_host_service(host_, &event, CONNECTION_TIMEOUT_MS) > 0) {
@@ -71,19 +71,24 @@ bool Server::stop() {
 			enet_packet_destroy(event.packet);
 		} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
 			// disconnect successful
-			remainingClients--;
 			LOG_DEBUG("Disconnection of client_"
 				<< event.peer->incomingPeerID
 				<< " succeeded, "
-				<< remainingClients
+				<< (clients_.size() - 1)
 				<< " remaining");
-			if (remainingClients <= 0) {
+			// remove the client
+			removeClient(event.peer);
+			if (clients_.empty()) {
 				break;
 			}
+		} else if (event.type == ENET_EVENT_TYPE_CONNECT) {
+			// client connected
+			LOG_DEBUG("Client has connected during server shutdown, disconnect");
+			// add and remove client
+			addClient(event.peer);
+			enet_peer_disconnect(event.peer, 0);
 		}
 	}
-	// clear clients
-	clients_ = std::map<uint32_t, ENetPeer*>();
 	return 0;
 }
 
@@ -91,24 +96,54 @@ uint32_t Server::numClients() const {
 	return clients_.size();
 }
 
-void Server::broadcast(const void* data, uint32_t byteSize) const {
+void Server::broadcast(PacketType type, const Packet::Shared& packet) const {
 	if (clients_.empty()) {
 		// no clients to broadcast to
 		return;
 	}
-	const uint32_t CHANNEL = 0;
-	// create the packet
-	ENetPacket* packet = enet_packet_create(
-		data,
-		byteSize + 1,
-		ENET_PACKET_FLAG_RELIABLE);
-	for (auto iter : clients_) {
-		auto client = iter.second;
-		// send the packet to the client
-		enet_peer_send(client, CHANNEL, packet);
+	uint32_t channel = 0;
+	uint32_t flags = 0;
+	if (type == PacketType::RELIABLE) {
+		channel = RELIABLE_CHANNEL;
+		flags = ENET_PACKET_FLAG_RELIABLE;
+	} else {
+		channel = UNRELIABLE_CHANNEL;
+		flags = ENET_PACKET_FLAG_UNSEQUENCED;
 	}
+	// create the packet
+	ENetPacket* p = enet_packet_create(
+		packet->data(),
+		packet->numBytes() + 1,
+		flags);
+	// send the packet to the peer
+	enet_host_broadcast(host_, channel, p);
 	// flush / send the packet queue
 	enet_host_flush(host_);
+}
+
+void Server::addClient(ENetPeer* peer) {
+	// get client from map
+	const auto& iter = clients_.find(peer->incomingPeerID);
+	if (iter != clients_.end()) {
+		LOG_WARN("Duplicate client_" << peer->incomingPeerID << "connection received");
+		return;
+	}
+	// add to client map
+	clients_[peer->incomingPeerID] = peer;
+	LOG_DEBUG(clients_.size() << " clients now");
+}
+
+void Server::removeClient(ENetPeer* peer) {
+	// get client from map
+	const auto& iter = clients_.find(peer->incomingPeerID);
+	if (iter == clients_.end()) {
+		LOG_WARN("Disconnection received from unknown client_" << peer->incomingPeerID);
+		return;
+	}
+	// reset the peer struct and force disconnection
+	enet_peer_reset(iter->second);
+	// remove from client map
+	clients_.erase(peer->incomingPeerID);
 }
 
 std::vector<Message::Shared> Server::poll() {
@@ -127,33 +162,41 @@ std::vector<Message::Shared> Server::poll() {
 					<< event.packet->data
 					<< "` was received from client_"
 					<< event.peer->incomingPeerID);
-				auto msg = Message::alloc(MessageType::DATA, (const char*)(event.packet->data));
+				// add msg
+				auto msg = Message::alloc(
+					MessageType::DATA,
+					Packet::alloc(
+						event.packet->data,
+						event.packet->dataLength));
 				msgs.push_back(msg);
 				// destroy packet payload
 				enet_packet_destroy(event.packet);
+
 			} else if (event.type == ENET_EVENT_TYPE_CONNECT) {
 				// client connected
-				auto msg = Message::alloc(MessageType::CONNECT);
-				msgs.push_back(msg);
-				// add to client map
-				clients_[event.peer->incomingPeerID] = event.peer;
-
 				LOG_DEBUG("Client has connected from "
 					<< addressToString(&event.peer->address)
 					<< ", "
-					<< clients_.size()
+					<< (clients_.size() + 1)
 					<< " connected clients");
+				// add client
+				addClient(event.peer);
+				// add msg
+				auto msg = Message::alloc(MessageType::CONNECT);
+				msgs.push_back(msg);
+
 			} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
 				// client disconnected
-				auto msg = Message::alloc(MessageType::DISCONNECT);
-				msgs.push_back(msg);
-				// remove from client map
-				clients_.erase(event.peer->incomingPeerID);
 				LOG_DEBUG("Client has disconnected from "
 					<< addressToString(&event.peer->address)
 					<< ", "
-					<< clients_.size()
+					<< (clients_.size() - 1)
 					<< " clients remaining");
+				// remove the client peer
+				removeClient(event.peer);
+				// add msg
+				auto msg = Message::alloc(MessageType::DISCONNECT);
+				msgs.push_back(msg);
 			}
 		} else if (res < 0) {
 			// error occured

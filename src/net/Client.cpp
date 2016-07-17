@@ -1,6 +1,8 @@
 #include "net/Client.h"
 
+#include "Common.h"
 #include "Log.h"
+#include "net/Packet.h"
 
 Client::Shared Client::alloc() {
 	return std::make_shared<Client>();
@@ -89,7 +91,6 @@ bool Client::disconnect() {
 			enet_packet_destroy(event.packet);
 		} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
 			// disconnect successful
-			// TODO: check if it was the server disconnecting or self
 			LOG_DEBUG("Disconnection from server successful");
 			success = true;
 			break;
@@ -108,19 +109,27 @@ bool Client::isConnected() const {
 	return server_ != NULL;
 }
 
-void Client::send(const void* data, uint32_t byteSize) const {
+void Client::send(PacketType type, const Packet::Shared& packet) const {
 	if (server_ == NULL) {
 		LOG_DEBUG("Client is not connected to any server");
 		return;
 	}
-	const uint32_t CHANNEL = 0;
+	uint32_t channel = 0;
+	uint32_t flags = 0;
+	if (type == PacketType::RELIABLE) {
+		channel = RELIABLE_CHANNEL;
+		flags = ENET_PACKET_FLAG_RELIABLE;
+	} else {
+		channel = UNRELIABLE_CHANNEL;
+		flags = ENET_PACKET_FLAG_UNSEQUENCED;
+	}
 	// create the packet
-	ENetPacket* packet = enet_packet_create(
-		data,
-		byteSize + 1,
-		ENET_PACKET_FLAG_RELIABLE);
+	ENetPacket* p = enet_packet_create(
+		packet->data(),
+		packet->numBytes() + 1,
+		flags);
 	// send the packet to the peer
-	enet_peer_send(server_, CHANNEL, packet);
+	enet_peer_send(server_, channel, p);
 	// flush / send the packet queue
 	enet_host_flush(host_);
 }
@@ -144,18 +153,21 @@ std::vector<Message::Shared> Client::poll() {
 					<< event.packet->data
 					<< "` was received on channel "
 					<< event.channelID);
-				auto msg = Message::alloc(MessageType::DATA, (const char*)(event.packet->data));
+				auto msg = Message::alloc(
+					MessageType::DATA,
+					Packet::alloc(
+						event.packet->data,
+						event.packet->dataLength));
 				msgs.push_back(msg);
 				// destroy packet payload
 				enet_packet_destroy(event.packet);
+
 			} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
 				// server disconnected
 				LOG_DEBUG("Connection to server has been lost");
 				auto msg = Message::alloc(MessageType::DISCONNECT);
 				msgs.push_back(msg);
-				// destroy connection with server
-				enet_peer_disconnect(server_, 0);
-				enet_peer_reset(server_);
+				// clear peer
 				server_ = NULL;
 			}
 		} else if (res < 0) {

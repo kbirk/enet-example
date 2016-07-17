@@ -25,6 +25,7 @@ include_directories(${ENET_INCLUDE_DIRS})
 set(client_sources
 	"src/net/Client.cpp"
 	"src/net/Message.cpp"
+	"src/net/Packet.cpp"
 	"src/Common.cpp"
 	"src/client.cpp")
 # Construct the executable
@@ -38,6 +39,7 @@ target_link_libraries(client ${ENET_LIBRARIES})
 set(server_sources
 	"src/net/Server.cpp"
 	"src/net/Message.cpp"
+	"src/net/Packet.cpp"
 	"src/Common.cpp"
 	"src/server.cpp")
 # Construct the executable

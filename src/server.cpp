@@ -10,7 +10,7 @@
 #include <thread>
 
 const uint32_t PORT = 7000;
-const uint64_t STEP_MS = 2000;
+const int64_t STEP_MS = 2000;
 
 bool quit = false;
 
@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
 
 		// broadcast to all clients
 		std::string msg = "I am the server this is my response=" + std::to_string(std::rand());
-		server->broadcast(msg.c_str(), msg.size());
+		server->broadcast(PacketType::RELIABLE, Packet::alloc(msg.c_str(), msg.size()));
 
 		// determine elapsed time to calc sleep for next frame
 		std::time_t now = timestamp();

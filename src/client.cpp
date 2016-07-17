@@ -11,7 +11,7 @@
 
 const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
-const uint64_t STEP_MS = 1000;
+const int64_t STEP_MS = 1000;
 
 bool quit = false;
 
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
 
 		// send message to server
 		std::string msg = "I am a client, this is my msg id=" + std::to_string(std::rand());
-		client->send(msg.c_str(), msg.size());
+		client->send(PacketType::RELIABLE, Packet::alloc(msg.c_str(), msg.size()));
 
 		// determine elapsed time to calc sleep for next frame
 		std::time_t now = timestamp();

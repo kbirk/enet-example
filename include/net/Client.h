@@ -10,6 +10,8 @@
 #include <vector>
 
 const uint32_t CONNECTION_TIMEOUT_MS = 5000;
+const uint32_t RELIABLE_CHANNEL = 0;
+const uint32_t UNRELIABLE_CHANNEL = 1;
 const uint32_t NUM_CHANNELS = 2;
 
 class Client {
@@ -26,7 +28,7 @@ class Client {
 		bool disconnect();
 		bool isConnected() const;
 
-		void send(const void*, uint32_t) const;
+		void send(PacketType, const Packet::Shared&) const;
 		std::vector<Message::Shared> poll();
 
 	private:

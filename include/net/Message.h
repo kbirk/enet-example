@@ -1,5 +1,8 @@
 #pragma once
 
+#include "net/Packet.h"
+
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -9,19 +12,17 @@ enum class MessageType {
 	DATA
 };
 
-struct Message {
+class Message {
 
 	public:
 
 		typedef std::shared_ptr<Message> Shared;
-		static Shared alloc(MessageType);
-		static Shared alloc(MessageType, const std::string&);
+		static Shared alloc(MessageType, Packet::Shared = nullptr);
 
-		Message(MessageType);
-		Message(MessageType, const std::string&);
+		Message(MessageType, Packet::Shared = nullptr);
 
 		MessageType type() const;
-		const std::string& text() const;
+		Packet::Shared packet() const;
 
 	private:
 
@@ -31,6 +32,5 @@ struct Message {
 		Message& operator= (const Message&);
 
 		MessageType type_;
-		std::string text_;
-
+		Packet::Shared packet_;
 };
