@@ -11,7 +11,7 @@
 #include <thread>
 
 const uint32_t PORT = 7000;
-const time_t STEP_MS = 5;
+const time_t STEP_MS = 100;
 const time_t STEPS_PER_SEC = 1000 / STEP_MS;
 
 bool quit = false;

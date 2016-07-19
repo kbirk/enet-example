@@ -29,8 +29,7 @@
 
 const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
-const time_t STEP_MS = 100;
-const time_t FRAME_MS = 0;
+const time_t DISCONNECT_TIMEOUT = 500;
 
 const float32_t DEFAULT_DISTANCE = 10.0f;
 const float32_t SCROLL_FACTOR = 0.005f;
@@ -56,8 +55,46 @@ VertexArrayObject::Shared z;
 Viewport::Shared viewport;
 glm::mat4 projection;
 Client::Shared client;
-Node::Shared scene;
 Node::Shared camera;
+
+std::vector<Node::Shared> frames;
+const uint32_t NUM_BUFFERED_FRAMES = 3;
+
+std::vector<time_t> frameStamps;
+
+void addFrame(Node::Shared node) {
+	while (frames.size() > NUM_BUFFERED_FRAMES) {
+		frames.erase(frames.begin());
+	}
+	frames.push_back(node);
+}
+
+void addFrameStamp(time_t time) {
+	while (frameStamps.size() > 20) {
+		frameStamps.erase(frameStamps.begin());
+	}
+	frameStamps.push_back(time);
+}
+
+float32_t getFrameRate() {
+	float32_t sum = 0;
+	for (auto stamp : frameStamps) {
+		sum += stamp;
+	}
+	return sum / float32_t(frameStamps.size());
+}
+
+Node::Shared interpolateFrames(const Node::Shared& a, const Node::Shared& b, float32_t t) {
+	auto node = Node::alloc();
+	node->setTranslation(glm::lerp(a->translation(), b->translation(), t));
+	node->setRotation(glm::slerp(a->rotation(), b->rotation(), t));
+	node->setScale(glm::lerp(a->scale(), b->scale(), t));
+	for (uint32_t i=0; i<a->children().size(); i++) {
+		auto child = interpolateFrames(a->children()[i], b->children()[i], t);
+		node->addChild(child);
+	}
+	return node;
+}
 
 std::string shader_path(const std::string& str, const std::string& type) {
 	return "resources/shaders/" + str + "." + type;
@@ -159,7 +196,7 @@ void signal_handler(int32_t signal) {
 
 void handle_disconnect() {
 	// sleep
-	sleepMS(STEP_MS);
+	sleepMS(DISCONNECT_TIMEOUT);
 	// attempt to reconnect
 	while (!quit) {
 		LOG_DEBUG("Attempting to re-connect to server...");
@@ -182,13 +219,14 @@ void deserialize(const uint8_t* src, uint32_t totalBytes) {
 	if (totalBytes == 0) {
 		return;
 	}
-	scene->clearChildren();
+	auto scene = Node::alloc();
 	uint32_t size = 0;
 	while (size < totalBytes) {
-		auto node = Node::alloc("child");
+		auto node = Node::alloc();
 		size = node->deserialize(src, size);
 		scene->addChild(node);
 	}
+	addFrame(scene);
 	return;
 }
 
@@ -201,6 +239,17 @@ bool process_frame(std::time_t now, std::time_t delta) {
 	if (Window::handleEvents()) {
 		return true;
 	}
+
+	if (frames.size() < NUM_BUFFERED_FRAMES) {
+		return false;
+	}
+
+	// get t value
+	float32_t frameRate = getFrameRate();
+	float32_t t = std::min(1.0f, float32_t(delta) / frameRate);
+
+	// interpolate frame
+	auto scene = interpolateFrames(frames[0], frames[1], t);
 
 	// clear buffers
 	glClearColor(0.137f, 0.137f, 0.137f, 1.0f);
@@ -280,54 +329,43 @@ int main(int argc, char** argv) {
 	load_shader();
 	load_axes();
 
-	scene = Node::alloc("scene");
-
 	if (client->connect(HOST, PORT)) {
 		return 1;
 	}
 
-	std::time_t lastFrame = timestamp();
-	std::time_t lastStep = lastFrame;
-
-	auto frame = 0;
+	std::time_t last = timestamp();
 
 	while (true) {
 
 		std::time_t now = timestamp();
-		std::time_t frameElapsed = now - lastFrame;
-		std::time_t stepElapsed = now - lastStep;
+		std::time_t elapsed = now - last;
 
-		// poll at step
-		if (stepElapsed >= STEP_MS) {
-			// poll for events
-			auto messages = client->poll();
-
-			// process events
-			for (auto msg : messages) {
-				if (msg->type() == MessageType::DISCONNECT) {
-					// handle the disconnect
-					handle_disconnect();
-					now = timestamp();
-					lastFrame = now;
-					// ignore other messages
-					break;
-				} else if (msg->type() == MessageType::DATA) {
-					// handle message
-					const uint8_t* data = (const uint8_t*)(msg->packet()->data());
-					uint32_t numBytes = msg->packet()->numBytes();
-					deserialize(data, numBytes);
-				}
-			}
-			lastStep = now;
+		// process the frame
+		if (process_frame(now, elapsed)) {
+			// exit
+			break;
 		}
 
-		if (frameElapsed >= FRAME_MS) {
-			// process the frame
-			if (process_frame(now, timestamp() - now)) {
-				// exit
+		// poll for events
+		auto messages = client->poll();
+
+		// process events
+		for (auto msg : messages) {
+			if (msg->type() == MessageType::DISCONNECT) {
+				// handle the disconnect
+				handle_disconnect();
+				now = timestamp();
+				last = now;
+				// ignore other messages
 				break;
+			} else if (msg->type() == MessageType::DATA) {
+				// handle message
+				const uint8_t* data = (const uint8_t*)(msg->packet()->data());
+				uint32_t numBytes = msg->packet()->numBytes();
+				deserialize(data, numBytes);
+				addFrameStamp(elapsed);
+				last = now;
 			}
-			lastFrame = now;
 		}
 
 		// send message to server
@@ -338,30 +376,6 @@ int main(int argc, char** argv) {
 		if (quit) {
 			break;
 		}
-
-		// increment frame
-		frame++;
-
-		// determine elapsed time to calc sleep for next frame
-		now = timestamp();
-		frameElapsed = now - lastFrame;
-		stepElapsed = now - lastStep;
-
-		std::time_t frameRemaining = FRAME_MS - frameElapsed;
-		std::time_t stepRemaining = STEP_MS - stepElapsed;
-
-		if (frameRemaining < stepRemaining) {
-			// closer to next frame
-			if (frameRemaining > 0) {
-				sleepMS(frameRemaining);
-			}
-		} else {
-			// closer to next step
-			if (stepRemaining > 0) {
-				sleepMS(stepRemaining);
-			}
-		}
-
 	}
 
 	client->disconnect();

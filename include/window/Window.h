@@ -38,11 +38,13 @@ struct WindowEvent {
 	SDL_Event originalEvent;
 };
 
+typedef std::function<void(WindowEvent)> WindowEventFunc;
+
 namespace Window {
 	void setup();
 	void teardown();
 	glm::ivec2 size();
 	void swapBuffers();
 	bool handleEvents();
-	void on(WindowEventType, std::function<void(WindowEvent)>);
+	void on(WindowEventType, WindowEventFunc);
 }

@@ -3,17 +3,18 @@
 namespace Window {
 
 	const std::string GAME_CONTROLLER_DB = "resources/gamecontrollerdb.txt";
+	const std::string WINDOW_TITLE = "ENet Example";
 	const uint32_t DEFAULT_WINDOW_WIDTH = 1280;
 	const uint32_t DEFAULT_WINDOW_HEIGHT = 720;
 
 	SDL_Window* window;
 	SDL_GLContext context;
-	std::map<WindowEventType, std::vector<std::function<void(WindowEvent)>>> callbacks;
+	std::map<WindowEventType, std::vector<WindowEventFunc>> callbacks;
 
-	void on(WindowEventType id, std::function<void(WindowEvent)> func) {
+	void on(WindowEventType id, WindowEventFunc func) {
 		auto iter = callbacks.find(id);
 		if (iter == callbacks.end()) {
-			callbacks[id] = std::vector<std::function<void(WindowEvent)>>();
+			callbacks[id] = std::vector<WindowEventFunc>();
 		}
 		callbacks[id].push_back(func);
 	}
@@ -49,7 +50,7 @@ namespace Window {
 		// SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 		// create an application window with the following settings:
 		window = SDL_CreateWindow(
-			"An SDL2 window", // window title
+			WINDOW_TITLE.c_str(), // window title
 			SDL_WINDOWPOS_UNDEFINED, // initial x position
 			SDL_WINDOWPOS_UNDEFINED, // initial y position
 			DEFAULT_WINDOW_WIDTH, // width, in pixels

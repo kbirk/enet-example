@@ -12,9 +12,9 @@ class Node : public Transform, public std::enable_shared_from_this<Node> {
 	public:
 
 		typedef std::shared_ptr<Node> Shared;
-		static Shared alloc(const std::string&);
+		static Shared alloc(const std::string& = "");
 
-		Node(const std::string&);
+		Node(const std::string& = "");
 
 		void addChild(Node::Shared);
 		void removeChild(Node::Shared);
