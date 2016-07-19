@@ -1,6 +1,6 @@
 #include "Common.h"
 
-#include "Log.h"
+#include "log/Log.h"
 
 std::time_t timestamp() {
 	return std::chrono::duration_cast<std::chrono::milliseconds>(

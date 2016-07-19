@@ -1,7 +1,7 @@
 #include "net/Client.h"
 
 #include "Common.h"
-#include "Log.h"
+#include "log/Log.h"
 #include "net/Packet.h"
 
 Client::Shared Client::alloc() {
@@ -126,7 +126,7 @@ void Client::send(PacketType type, const Packet::Shared& packet) const {
 	// create the packet
 	ENetPacket* p = enet_packet_create(
 		packet->data(),
-		packet->numBytes() + 1,
+		packet->numBytes(), // + 1,
 		flags);
 	// send the packet to the peer
 	enet_peer_send(server_, channel, p);
@@ -147,12 +147,12 @@ std::vector<Message::Shared> Client::poll() {
 			// event occured
 			if (event.type == ENET_EVENT_TYPE_RECEIVE) {
 				// received a packet
-				LOG_DEBUG("A packet of length "
-					<< event.packet->dataLength
-					<< " containing `"
-					<< event.packet->data
-					<< "` was received on channel "
-					<< event.channelID);
+				// LOG_DEBUG("A packet of length "
+				// 	<< event.packet->dataLength
+				// 	<< " containing `"
+				// 	<< event.packet->data
+				// 	<< "` was received on channel "
+				// 	<< event.channelID);
 				auto msg = Message::alloc(
 					MessageType::DATA,
 					Packet::alloc(

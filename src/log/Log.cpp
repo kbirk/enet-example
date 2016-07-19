@@ -1,4 +1,4 @@
-#include "Log.h"
+#include "log/Log.h"
 
 std::string getTime() {
 	auto t = std::time(nullptr);

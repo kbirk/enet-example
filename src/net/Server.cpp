@@ -1,7 +1,7 @@
 #include "net/Server.h"
 
 #include "Common.h"
-#include "Log.h"
+#include "log/Log.h"
 #include "net/Packet.h"
 
 const uint32_t TIMEOUT = 60000;
@@ -120,7 +120,7 @@ void Server::broadcast(PacketType type, const Packet::Shared& packet) const {
 	// create the packet
 	ENetPacket* p = enet_packet_create(
 		packet->data(),
-		packet->numBytes() + 1,
+		packet->numBytes(), // + 1,
 		flags);
 	// send the packet to the peer
 	enet_host_broadcast(host_, channel, p);
