@@ -55,7 +55,7 @@ namespace Window {
 			SDL_WINDOWPOS_UNDEFINED, // initial y position
 			DEFAULT_WINDOW_WIDTH, // width, in pixels
 			DEFAULT_WINDOW_HEIGHT, // height, in pixels
-			SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE); // flags - see below
+			SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI); // flags
 		// check that the window was successfully made
 		if (window == nullptr) {
 			// In the event that the window could not be made...
@@ -85,7 +85,7 @@ namespace Window {
 	glm::ivec2 size() {
 		int32_t w = 0;
 		int32_t h = 0;
-		SDL_GetWindowSize(window, &w, &h);
+		SDL_GL_GetDrawableSize(window, &w, &h);
 		return glm::ivec2(w, h);
 	}
 
