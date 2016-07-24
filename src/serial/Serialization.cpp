@@ -59,6 +59,16 @@ float64_t unpack754(uint64_t i, uint32_t bits, uint32_t expbits) {
 	return result;
 }
 
+uint32_t serialize(uint8_t* dest, uint32_t x, uint32_t offset) {
+	memcpy(dest + offset, &x, 4);
+	return 4;
+}
+
+uint32_t deserialize(uint32_t* x, const uint8_t* src, uint32_t offset) {
+	memcpy(x, src + offset, 4);
+	return 4;
+}
+
 uint32_t serialize(uint8_t* dest, const glm::vec3& vec, uint32_t offset) {
 	if (dest == nullptr) {
 		return 12;
