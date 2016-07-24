@@ -9,8 +9,7 @@ Client::Shared Client::alloc() {
 }
 
 Client::Client()
-	: host_(NULL)
-	, server_(NULL) {
+	: host_(NULL) {
 	// initialize enet
 	// TODO: prevent this from being called multiple times
 	if (enet_initialize() != 0) {
@@ -43,7 +42,7 @@ Client::~Client() {
 }
 
 bool Client::connect(const std::string& host, uint32_t port) {
-	if (server_ != NULL) {
+	if (isConnected()) {
 		LOG_DEBUG("Client is already connected to a server");
 		return 0;
 	}
@@ -52,8 +51,8 @@ bool Client::connect(const std::string& host, uint32_t port) {
 	enet_address_set_host(&address, host.c_str());
 	address.port = port;
 	// initiate the connection, allocating the two channels 0 and 1.
-	server_ = enet_host_connect(host_, &address, NUM_CHANNELS, 0);
-	if (server_ == NULL) {
+	ENetPeer* server = enet_host_connect(host_, &address, NUM_CHANNELS, 0);
+	if (server == NULL) {
 		LOG_ERROR("No available peers for initiating an ENet connection");
 		return 1;
 	}
@@ -69,19 +68,19 @@ bool Client::connect(const std::string& host, uint32_t port) {
 		return 0;
 	}
 	// failure to connect
-	enet_peer_reset(server_);
-	server_ = NULL;
+	enet_peer_reset(server);
 	LOG_ERROR("Connection to `" << host << ":" << port << "` failed");
 	return 1;
 }
 
 bool Client::disconnect() {
-	if (server_ == NULL) {
-		return 1;
+	if (!isConnected()) {
+		return 0;
 	}
 	LOG_DEBUG("Disconnecting from server...");
+	ENetPeer* server = &host_->peers[0];
 	// attempt to gracefully disconnect
-	enet_peer_disconnect(server_, 0);
+	enet_peer_disconnect(server, 0);
 	// wait for the disconnect to be acknowledged
 	ENetEvent event;
 	bool success = false;
@@ -99,18 +98,17 @@ bool Client::disconnect() {
 	if (!success) {
 		// disconnect attempt didn't succeed yet, force close the connection
 		LOG_ERROR("Disconnection was not acknowledged by server, shutdown forced");
-		enet_peer_reset(server_);
+		enet_peer_reset(server);
 	}
-	server_ = NULL;
 	return success;
 }
 
 bool Client::isConnected() const {
-	return server_ != NULL;
+	return host_->connectedPeers > 0;
 }
 
 void Client::send(PacketType type, const Packet::Shared& packet) const {
-	if (server_ == NULL) {
+	if (!isConnected()) {
 		LOG_DEBUG("Client is not connected to any server");
 		return;
 	}
@@ -128,15 +126,18 @@ void Client::send(PacketType type, const Packet::Shared& packet) const {
 		packet->data(),
 		packet->numBytes(), // + 1,
 		flags);
+	// get server
+	ENetPeer* server = &host_->peers[0];
 	// send the packet to the peer
-	enet_peer_send(server_, channel, p);
+	enet_peer_send(server, channel, p);
 	// flush / send the packet queue
 	enet_host_flush(host_);
 }
 
 std::vector<Message::Shared> Client::poll() {
 	std::vector<Message::Shared> msgs;
-	if (server_ == NULL) {
+	if (!isConnected()) {
+		LOG_DEBUG("Client is not connected to any server");
 		return msgs;
 	}
 	ENetEvent event;
@@ -170,8 +171,6 @@ std::vector<Message::Shared> Client::poll() {
 					event.peer->incomingPeerID,
 					MessageType::DISCONNECT);
 				msgs.push_back(msg);
-				// clear peer
-				server_ = NULL;
 			}
 		} else if (res < 0) {
 			// error occured

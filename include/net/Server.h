@@ -27,6 +27,7 @@ class Server {
 
 		bool start(uint32_t);
 		bool stop();
+		bool isRunning() const;
 
 		uint32_t numClients() const;
 
@@ -40,9 +41,5 @@ class Server {
 		// prevent assignment
 		Server& operator= (const Server&);
 
-		void addClient(ENetPeer*);
-		void removeClient(ENetPeer*);
-
 		ENetHost* host_;
-		std::map<uint32_t, ENetPeer*> clients_;
 };

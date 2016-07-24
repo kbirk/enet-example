@@ -39,6 +39,5 @@ class Client {
 		Client& operator= (const Client&);
 
 		ENetHost* host_;
-		ENetPeer* server_;
 
 };

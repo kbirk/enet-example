@@ -23,10 +23,6 @@ Server::Server()
 Server::~Server() {
 	// stop the server if we haven't already
 	stop();
-	// destroy the host
-	// NOTE: safe to call when host is NULL
-	enet_host_destroy(host_);
-	host_ = NULL;
 	// TODO: prevent this from being called multiple times
 	enet_deinitialize();
 }
@@ -53,19 +49,20 @@ bool Server::start(uint32_t port) {
 }
 
 bool Server::stop() {
-	if (clients_.empty()) {
+	if (!isRunning()) {
 		// no clients to disconnect from
 		return 0;
 	}
 	// attempt to gracefully disconnect all clients
 	LOG_DEBUG("Disconnecting clients...");
-	for (auto iter : clients_) {
-		auto client = iter.second;
+	for (uint32_t i=0; i<numClients(); i++) {
 		// disconnect the client
+		ENetPeer* client = &host_->peers[0];
 		enet_peer_disconnect(client, 0);
 	}
 	// wait for the disconnections to be acknowledged
-	auto t = timestamp();
+	auto stamp = timestamp();
+	bool success = true;
 	ENetEvent event;
 	while (enet_host_service(host_, &event, CONNECTION_TIMEOUT_MS) > 0) {
 		if (event.type == ENET_EVENT_TYPE_RECEIVE) {
@@ -77,34 +74,40 @@ bool Server::stop() {
 			LOG_DEBUG("Disconnection of client_"
 				<< event.peer->incomingPeerID
 				<< " succeeded, "
-				<< (clients_.size() - 1)
+				<< numClients()
 				<< " remaining");
-			// remove the client
-			removeClient(event.peer);
-			if (clients_.empty()) {
+			// check if we are done
+			if (numClients() == 0) {
 				break;
 			}
 		} else if (event.type == ENET_EVENT_TYPE_CONNECT) {
 			// client connected
 			LOG_DEBUG("Client has connected during server shutdown, disconnect");
 			// add and remove client
-			addClient(event.peer);
 			enet_peer_disconnect(event.peer, 0);
 		}
-		if (timestamp() - t > TIMEOUT) {
-			LOG_DEBUG("Forcing disconnect with " << clients_.size() << " clients");
+		if (timestamp() - stamp > TIMEOUT) {
+			LOG_DEBUG("Forcing disconnect with " << numClients() << " clients");
+			success = false;
 			break;
 		}
 	}
-	return 0;
+	// destroy the host
+	enet_host_destroy(host_);
+	host_ = NULL;
+	return success;
+}
+
+bool Server::isRunning() const {
+	return host_ != NULL;
 }
 
 uint32_t Server::numClients() const {
-	return clients_.size();
+	return host_->connectedPeers;
 }
 
 void Server::broadcast(PacketType type, const Packet::Shared& packet) const {
-	if (clients_.empty()) {
+	if (numClients() == 0) {
 		// no clients to broadcast to
 		return;
 	}
@@ -120,36 +123,12 @@ void Server::broadcast(PacketType type, const Packet::Shared& packet) const {
 	// create the packet
 	ENetPacket* p = enet_packet_create(
 		packet->data(),
-		packet->numBytes(), // + 1,
+		packet->numBytes(),
 		flags);
 	// send the packet to the peer
 	enet_host_broadcast(host_, channel, p);
 	// flush / send the packet queue
 	enet_host_flush(host_);
-}
-
-void Server::addClient(ENetPeer* peer) {
-	// get client from map
-	const auto& iter = clients_.find(peer->incomingPeerID);
-	if (iter != clients_.end()) {
-		LOG_WARN("Duplicate client_" << peer->incomingPeerID << "connection received");
-		return;
-	}
-	// add to client map
-	clients_[peer->incomingPeerID] = peer;
-}
-
-void Server::removeClient(ENetPeer* peer) {
-	// get client from map
-	const auto& iter = clients_.find(peer->incomingPeerID);
-	if (iter == clients_.end()) {
-		LOG_WARN("Disconnection received from unknown client_" << peer->incomingPeerID);
-		return;
-	}
-	// reset the peer struct and force disconnection
-	enet_peer_reset(iter->second);
-	// remove from client map
-	clients_.erase(peer->incomingPeerID);
 }
 
 std::vector<Message::Shared> Server::poll() {
@@ -184,10 +163,8 @@ std::vector<Message::Shared> Server::poll() {
 				LOG_DEBUG("Client has connected from "
 					<< addressToString(&event.peer->address)
 					<< ", "
-					<< (clients_.size() + 1)
+					<< numClients()
 					<< " connected clients");
-				// add client
-				addClient(event.peer);
 				// add msg
 				auto msg = Message::alloc(
 					event.peer->incomingPeerID,
@@ -199,10 +176,8 @@ std::vector<Message::Shared> Server::poll() {
 				LOG_DEBUG("Client has disconnected from "
 					<< addressToString(&event.peer->address)
 					<< ", "
-					<< (clients_.size() - 1)
+					<< numClients()
 					<< " clients remaining");
-				// remove the client peer
-				removeClient(event.peer);
 				// add msg
 				auto msg = Message::alloc(
 					event.peer->incomingPeerID,
