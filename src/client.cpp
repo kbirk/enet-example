@@ -11,7 +11,6 @@
 #include "log/Log.h"
 #include "net/Client.h"
 #include "net/Message.h"
-#include "render/Node.h"
 #include "render/RenderCommand.h"
 #include "render/Renderer.h"
 #include "render/Transform.h"
@@ -26,6 +25,8 @@
 #include <iostream>
 #include <string>
 #include <thread>
+
+typedef std::map<uint32_t, Transform::Shared> Frame;
 
 const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
@@ -55,14 +56,14 @@ VertexArrayObject::Shared z;
 Viewport::Shared viewport;
 glm::mat4 projection;
 Client::Shared client;
-Node::Shared camera;
+Transform::Shared camera;
 
-std::vector<Node::Shared> frames;
+std::vector<Frame> frames;
 const uint32_t NUM_BUFFERED_FRAMES = 3;
 
 std::vector<time_t> frameStamps;
 
-void addFrame(Node::Shared node) {
+void addFrame(const Frame& node) {
 	while (frames.size() > NUM_BUFFERED_FRAMES) {
 		frames.erase(frames.begin());
 	}
@@ -84,27 +85,36 @@ float32_t getFrameRate() {
 	return sum / float32_t(frameStamps.size());
 }
 
-Node::Shared interpolateFrames(const Node::Shared& a, const Node::Shared& b, float32_t t) {
-	auto node = Node::alloc();
-	node->setTranslation(glm::lerp(a->translation(), b->translation(), t));
-	node->setRotation(glm::slerp(a->rotation(), b->rotation(), t));
-	node->setScale(glm::lerp(a->scale(), b->scale(), t));
-	for (uint32_t i=0; i<a->children().size(); i++) {
-		auto child = interpolateFrames(a->children()[i], b->children()[i], t);
-		node->addChild(child);
+Frame interpolateFrames(const Frame& a, const Frame& b, float32_t t) {
+	auto frame = Frame();
+	for (auto iter : a) {
+		auto id = iter.first;
+		auto ta = iter.second;
+		// check that another frame exists for it.
+		auto match = b.find(id);
+		if (match == b.end()) {
+			continue;
+		}
+		auto tb = match->second;
+		// interpolate between frames
+		auto transform = Transform::alloc();
+		transform->setTranslation(glm::lerp(ta->translation(), tb->translation(), t));
+		transform->setRotation(glm::slerp(ta->rotation(), tb->rotation(), t));
+		transform->setScale(glm::lerp(ta->scale(), tb->scale(), t));
+		// add to frame
+		frame[id] = transform;
 	}
-	return node;
+	return frame;
 }
 
 std::string shader_path(const std::string& str, const std::string& type) {
 	return "resources/shaders/" + str + "." + type;
 }
 
+
 void load_shader() {
 	shader = VertexFragmentShader::alloc();
-	shader->create(
-		shader_path("flat", "vert"),
-		shader_path("flat", "frag"));
+	shader->create(shader_path("flat", "vert"), shader_path("flat", "frag"));
 }
 
 void load_cube() {
@@ -215,18 +225,20 @@ void update_view() {
 	projection = glm::perspective(FIELD_OF_VIEW, float32_t(size.x) / float32_t(size.y), NEAR_PLANE, FAR_PLANE);
 }
 
-void deserialize(const uint8_t* src, uint32_t totalBytes) {
+void deserialize_frame(const uint8_t* src, uint32_t totalBytes) {
 	if (totalBytes == 0) {
 		return;
 	}
-	auto scene = Node::alloc();
-	uint32_t size = 0;
-	while (size < totalBytes) {
-		auto node = Node::alloc();
-		size = node->deserialize(src, size);
-		scene->addChild(node);
+	auto frame = Frame();
+	uint32_t offset = 0;
+	while (offset < totalBytes) {
+		auto transform = Transform::alloc();
+		uint32_t id = 0;
+		offset += deserialize(&id, src, offset);
+		offset += transform->deserialize(src, offset);
+		frame[id] = transform;
 	}
-	addFrame(scene);
+	addFrame(frame);
 	return;
 }
 
@@ -249,7 +261,7 @@ bool process_frame(std::time_t now, std::time_t delta) {
 	float32_t t = std::min(1.0f, float32_t(delta) / frameRate);
 
 	// interpolate frame
-	auto scene = interpolateFrames(frames[0], frames[1], t);
+	auto frame = interpolateFrames(frames[0], frames[1], t);
 
 	// clear buffers
 	glClearColor(0.137f, 0.137f, 0.137f, 1.0f);
@@ -260,9 +272,10 @@ bool process_frame(std::time_t now, std::time_t delta) {
 	// draw origin
 	Renderer::render(render_axes());
 
-	// draw
-	for (auto child : scene->children()) {
-		Renderer::render(render_flat(cube, child->matrix()));
+	// draw transforms
+	for (auto iter : frame) {
+		auto transform = iter.second;
+		Renderer::render(render_flat(cube, transform->matrix()));
 	}
 
 	// swap back buffer
@@ -274,7 +287,7 @@ bool process_frame(std::time_t now, std::time_t delta) {
 void load_viewport() {
 	auto size = Window::size();
 	viewport = Viewport::alloc(0, 0, size.x, size.y);
-	camera = Node::alloc("camera");
+	camera = Transform::alloc();
 	camera->setTranslation(glm::vec3(0, 0.0, DEFAULT_DISTANCE));
 }
 
@@ -362,7 +375,7 @@ int main(int argc, char** argv) {
 				// handle message
 				const uint8_t* data = (const uint8_t*)(msg->packet()->data());
 				uint32_t numBytes = msg->packet()->numBytes();
-				deserialize(data, numBytes);
+				deserialize_frame(data, numBytes);
 				addFrameStamp(elapsed);
 				last = now;
 			}

@@ -154,6 +154,7 @@ std::vector<Message::Shared> Client::poll() {
 				// 	<< "` was received on channel "
 				// 	<< event.channelID);
 				auto msg = Message::alloc(
+					event.peer->incomingPeerID,
 					MessageType::DATA,
 					Packet::alloc(
 						event.packet->data,
@@ -165,7 +166,9 @@ std::vector<Message::Shared> Client::poll() {
 			} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
 				// server disconnected
 				LOG_DEBUG("Connection to server has been lost");
-				auto msg = Message::alloc(MessageType::DISCONNECT);
+				auto msg = Message::alloc(
+					event.peer->incomingPeerID,
+					MessageType::DISCONNECT);
 				msgs.push_back(msg);
 				// clear peer
 				server_ = NULL;

@@ -170,6 +170,7 @@ std::vector<Message::Shared> Server::poll() {
 					<< event.peer->incomingPeerID);
 				// add msg
 				auto msg = Message::alloc(
+					event.peer->incomingPeerID,
 					MessageType::DATA,
 					Packet::alloc(
 						event.packet->data,
@@ -188,7 +189,9 @@ std::vector<Message::Shared> Server::poll() {
 				// add client
 				addClient(event.peer);
 				// add msg
-				auto msg = Message::alloc(MessageType::CONNECT);
+				auto msg = Message::alloc(
+					event.peer->incomingPeerID,
+					MessageType::CONNECT);
 				msgs.push_back(msg);
 
 			} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
@@ -201,7 +204,9 @@ std::vector<Message::Shared> Server::poll() {
 				// remove the client peer
 				removeClient(event.peer);
 				// add msg
-				auto msg = Message::alloc(MessageType::DISCONNECT);
+				auto msg = Message::alloc(
+					event.peer->incomingPeerID,
+					MessageType::DISCONNECT);
 				msgs.push_back(msg);
 			}
 		} else if (res < 0) {

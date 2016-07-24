@@ -1,12 +1,17 @@
 #include "net/Message.h"
 
-Message::Shared Message::alloc(MessageType type, Packet::Shared packet) {
-	return std::make_shared<Message>(type, packet);
+Message::Shared Message::alloc(uint32_t id, MessageType type, Packet::Shared packet) {
+	return std::make_shared<Message>(id, type, packet);
 }
 
-Message::Message(MessageType type, Packet::Shared packet)
-	: type_(type)
+Message::Message(uint32_t id, MessageType type, Packet::Shared packet)
+	: id_(id)
+	, type_(type)
 	, packet_(packet) {}
+
+uint32_t Message::id() const {
+	return id_;
+}
 
 MessageType Message::type() const {
 	return type_;
