@@ -15,7 +15,10 @@ sudo aptitude install cmake
 Install Dependencies:
 
 ```bash
+sudo aptitude install libglm-dev
+sudo aptitude install libsdl2-dev
 sudo aptitude install libenet-dev
+sudo aptitude install libepoxy-dev
 ```
 
 #### OSX
@@ -29,7 +32,10 @@ brew install cmake
 Install Dependencies:
 
 ```bash
-brew install enet
+brew install glm
+brew install sdl2
+nrew install enet
+brew install libepoxy
 ```
 
 ## Build
