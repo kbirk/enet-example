@@ -42,4 +42,8 @@ class Server {
 		Server& operator= (const Server&);
 
 		ENetHost* host_;
+		// NOTE: ENet allocates all peers at once and doesn't shuffle them,
+		// which leads to non-contiguous connected peers. This map
+		// will make it easier to manage them by id
+		std::map<uint32_t, ENetPeer*> clients_;
 };

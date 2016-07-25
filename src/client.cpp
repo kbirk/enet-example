@@ -30,7 +30,7 @@ typedef std::map<uint32_t, Transform::Shared> Frame;
 
 const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
-const time_t DISCONNECT_TIMEOUT = 500;
+const time_t DISCONNECT_TIMEOUT = 5000;
 
 const float32_t DEFAULT_DISTANCE = 10.0f;
 const float32_t SCROLL_FACTOR = 0.005f;

@@ -4,14 +4,12 @@
 #include "log/Log.h"
 #include "net/Packet.h"
 
-const uint32_t TIMEOUT = 60000;
-
 Server::Shared Server::alloc() {
 	return std::make_shared<Server>();
 }
 
 Server::Server()
-	: host_(NULL) {
+	: host_(nullptr) {
 	// initialize enet
 	// TODO: prevent this from being called multiple times
 	if (enet_initialize() != 0) {
@@ -41,7 +39,7 @@ bool Server::start(uint32_t port) {
 		0); // assume any amount of outgoing bandwidth
 	// check if creation was successful
 	// NOTE: this only fails if malloc fails inside `enet_host_create`
-	if (host_ == NULL) {
+	if (host_ == nullptr) {
 		LOG_ERROR("An error occurred while trying to create an ENet server host");
 		return 1;
 	}
@@ -54,52 +52,79 @@ bool Server::stop() {
 		return 0;
 	}
 	// attempt to gracefully disconnect all clients
-	LOG_DEBUG("Disconnecting clients...");
-	for (uint32_t i=0; i<numClients(); i++) {
-		// disconnect the client
-		ENetPeer* client = &host_->peers[0];
+	LOG_DEBUG("Disconnecting " << numClients() << " clients...");
+	for (auto iter : clients_) {
+		auto client = iter.second;
+		LOG_DEBUG("Disconnecting from client_" << client->incomingPeerID);
 		enet_peer_disconnect(client, 0);
 	}
 	// wait for the disconnections to be acknowledged
 	auto stamp = timestamp();
-	bool success = true;
+	bool success = false;
 	ENetEvent event;
-	while (enet_host_service(host_, &event, CONNECTION_TIMEOUT_MS) > 0) {
-		if (event.type == ENET_EVENT_TYPE_RECEIVE) {
-			// throw away any received packets during disconnect
-			LOG_DEBUG("Discarding received packet");
-			enet_packet_destroy(event.packet);
-		} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
-			// disconnect successful
-			LOG_DEBUG("Disconnection of client_"
-				<< event.peer->incomingPeerID
-				<< " succeeded, "
-				<< numClients()
-				<< " remaining");
-			// check if we are done
-			if (numClients() == 0) {
+	while (true) {
+		int32_t res = enet_host_service(host_, &event, 0);
+		if (res > 0) {
+			// event occured
+			if (event.type == ENET_EVENT_TYPE_RECEIVE) {
+				// throw away any received packets during disconnect
+				LOG_DEBUG("Discarding received packet");
+				enet_packet_destroy(event.packet);
+			} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
+				// disconnect successful
+				LOG_DEBUG("Disconnection of client_"
+					<< event.peer->incomingPeerID
+					<< " succeeded, "
+					<< (clients_.size() - 1)
+					<< " remaining");
+				// remove from remaining
+				clients_.erase(event.peer->incomingPeerID);
+			} else if (event.type == ENET_EVENT_TYPE_CONNECT) {
+				// client connected
+				LOG_DEBUG("Connection accepted from client_"
+					<< event.peer->incomingPeerID
+					<< " during server shutdown, disconnect");
+				// add and remove client
+				enet_peer_disconnect(event.peer, 0);
+				// add to remaining
+				clients_[event.peer->incomingPeerID] = event.peer;
+			}
+		} else if (res < 0) {
+			// error occured
+			LOG_ERROR("Encountered error while polling");
+			break;
+		} else {
+			// no event, check if finished
+			if (clients_.empty()) {
+				// all clients successfully disconnected
+				LOG_DEBUG("Disconnection from all clients successful");
+				success = true;
 				break;
 			}
-		} else if (event.type == ENET_EVENT_TYPE_CONNECT) {
-			// client connected
-			LOG_DEBUG("Client has connected during server shutdown, disconnect");
-			// add and remove client
-			enet_peer_disconnect(event.peer, 0);
 		}
-		if (timestamp() - stamp > TIMEOUT) {
-			LOG_DEBUG("Forcing disconnect with " << numClients() << " clients");
-			success = false;
+		// check timeout
+		if (timestamp() - stamp > CONNECTION_TIMEOUT_MS) {
+			LOG_ERROR("Disconnection was not acknowledged by server, shutdown forced");
 			break;
 		}
 	}
+	// force disconnect the remaining clients
+	for (auto iter : clients_) {
+		auto id = iter.first;
+		auto client = iter.second;
+		LOG_DEBUG("Forcibly disconnecting client_" << id);
+		enet_peer_reset(client);
+	}
+	// clear clients
+	clients_ = std::map<uint32_t, ENetPeer*>();
 	// destroy the host
 	enet_host_destroy(host_);
-	host_ = NULL;
-	return success;
+	host_ = nullptr;
+	return !success;
 }
 
 bool Server::isRunning() const {
-	return host_ != NULL;
+	return host_ != nullptr;
 }
 
 uint32_t Server::numClients() const {
@@ -170,6 +195,7 @@ std::vector<Message::Shared> Server::poll() {
 					event.peer->incomingPeerID,
 					MessageType::CONNECT);
 				msgs.push_back(msg);
+				clients_[event.peer->incomingPeerID] = event.peer;
 
 			} else if (event.type == ENET_EVENT_TYPE_DISCONNECT) {
 				// client disconnected
@@ -183,6 +209,7 @@ std::vector<Message::Shared> Server::poll() {
 					event.peer->incomingPeerID,
 					MessageType::DISCONNECT);
 				msgs.push_back(msg);
+				clients_.erase(event.peer->incomingPeerID);
 			}
 		} else if (res < 0) {
 			// error occured

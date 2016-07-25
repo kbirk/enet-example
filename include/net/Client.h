@@ -13,6 +13,7 @@ const uint32_t CONNECTION_TIMEOUT_MS = 5000;
 const uint32_t RELIABLE_CHANNEL = 0;
 const uint32_t UNRELIABLE_CHANNEL = 1;
 const uint32_t NUM_CHANNELS = 2;
+const uint8_t SERVER_ID = 0;
 
 class Client {
 
@@ -39,5 +40,6 @@ class Client {
 		Client& operator= (const Client&);
 
 		ENetHost* host_;
+		ENetPeer* server_;
 
 };
