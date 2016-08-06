@@ -1,7 +1,5 @@
 #include "render/Transform.h"
 
-#include "serial/Serialization.h"
-
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
@@ -152,26 +150,4 @@ glm::vec3 Transform::z() const {
 		yz = rotation_.y*rotation_.z,
 		yw = rotation_.y*rotation_.w;
 	return normalize(glm::vec3(2*xz + 2*yw, 2*yz - 2*xw, 1 - 2*xx - 2*yy));
-}
-
-uint32_t Transform::serialize(uint8_t* dest, uint32_t offset) const {
-	if (dest == nullptr) {
-		return 12 + 12 + 16;
-	}
-	uint32_t size = 0;
-	size += ::serialize(dest, translation_, offset + size);
-	size += ::serialize(dest, rotation_, offset + size);
-	size += ::serialize(dest, scale_, offset + size);
-	return size;
-}
-
-uint32_t Transform::deserialize(const uint8_t* src, uint32_t offset) {
-	if (src == nullptr) {
-		return 12 + 12 + 16;
-	}
-	uint32_t size = 0;
-	size += ::deserialize(translation_, src, offset + size);
-	size += ::deserialize(rotation_, src, offset + size);
-	size += ::deserialize(scale_, src, offset + size);
-	return size;
 }

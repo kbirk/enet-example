@@ -4,8 +4,8 @@ namespace Window {
 
 	const std::string GAME_CONTROLLER_DB = "resources/gamecontrollerdb.txt";
 	const std::string WINDOW_TITLE = "ENet Example";
-	const uint32_t DEFAULT_WINDOW_WIDTH = 1280;
-	const uint32_t DEFAULT_WINDOW_HEIGHT = 720;
+	const uint32_t DEFAULT_WINDOW_WIDTH = 512;
+	const uint32_t DEFAULT_WINDOW_HEIGHT = 364;
 
 	SDL_Window* window;
 	SDL_GLContext context;
@@ -19,7 +19,7 @@ namespace Window {
 		callbacks[id].push_back(func);
 	}
 
-	void executeCallbacks(WindowEventType type, SDL_Event event) {
+	void executeCallbacks(WindowEventType type, SDL_Event* event) {
 		auto iter = callbacks.find(type);
 		if (iter != callbacks.end()) {
 			WindowEvent msg{
@@ -97,27 +97,27 @@ namespace Window {
 			switch (event.type) {
 
 				case SDL_CONTROLLERDEVICEADDED:
-					executeCallbacks(WindowEventType::CONTROLLER_ADD, event);
+					executeCallbacks(WindowEventType::CONTROLLER_ADD, &event);
 					break;
 
 				case SDL_CONTROLLERDEVICEREMOVED:
-					executeCallbacks(WindowEventType::CONTROLLER_REMOVE, event);
+					executeCallbacks(WindowEventType::CONTROLLER_REMOVE, &event);
 					break;
 
 				case SDL_CONTROLLERBUTTONDOWN:
-					executeCallbacks(WindowEventType::CONTROLLER_DOWN, event);
+					executeCallbacks(WindowEventType::CONTROLLER_DOWN, &event);
 					break;
 
 				case SDL_CONTROLLERBUTTONUP:
-					executeCallbacks(WindowEventType::CONTROLLER_UP, event);
+					executeCallbacks(WindowEventType::CONTROLLER_UP, &event);
 					break;
 
 				case SDL_CONTROLLERAXISMOTION:
-					executeCallbacks(WindowEventType::CONTROLLER_AXIS, event);
+					executeCallbacks(WindowEventType::CONTROLLER_AXIS, &event);
 					break;
 
 				case SDL_KEYDOWN:
-					executeCallbacks(WindowEventType::KEY_DOWN, event);
+					executeCallbacks(WindowEventType::KEY_DOWN, &event);
 					break;
 
 				case SDL_KEYUP:
@@ -125,21 +125,21 @@ namespace Window {
 					if (event.key.keysym.sym == SDLK_ESCAPE) {
 						status = 1; // set status to 1 to exit main loop
 					}
-					executeCallbacks(WindowEventType::KEY_UP, event);
+					executeCallbacks(WindowEventType::KEY_UP, &event);
 					break;
 
 				case SDL_MOUSEBUTTONDOWN:
 					switch (event.button.button) {
 						case SDL_BUTTON_LEFT:
-							executeCallbacks(WindowEventType::MOUSE_LEFT_DOWN, event);
+							executeCallbacks(WindowEventType::MOUSE_LEFT_DOWN, &event);
 							break;
 
 						case SDL_BUTTON_RIGHT:
-							executeCallbacks(WindowEventType::MOUSE_RIGHT_DOWN, event);
+							executeCallbacks(WindowEventType::MOUSE_RIGHT_DOWN, &event);
 							break;
 
 						case SDL_BUTTON_MIDDLE:
-							executeCallbacks(WindowEventType::MOUSE_MIDDLE_DOWN, event);
+							executeCallbacks(WindowEventType::MOUSE_MIDDLE_DOWN, &event);
 							break;
 					}
 					break;
@@ -147,38 +147,38 @@ namespace Window {
 				case SDL_MOUSEBUTTONUP:
 					switch (event.button.button) {
 						case SDL_BUTTON_LEFT:
-							executeCallbacks(WindowEventType::MOUSE_LEFT_UP, event);
+							executeCallbacks(WindowEventType::MOUSE_LEFT_UP, &event);
 							break;
 
 						case SDL_BUTTON_RIGHT:
-							executeCallbacks(WindowEventType::MOUSE_RIGHT_UP, event);
+							executeCallbacks(WindowEventType::MOUSE_RIGHT_UP, &event);
 							break;
 
 						case SDL_BUTTON_MIDDLE:
-							executeCallbacks(WindowEventType::MOUSE_MIDDLE_UP, event);
+							executeCallbacks(WindowEventType::MOUSE_MIDDLE_UP, &event);
 							break;
 					}
 					break;
 
 				case SDL_MOUSEWHEEL:
-					executeCallbacks(WindowEventType::MOUSE_WHEEL, event);
+					executeCallbacks(WindowEventType::MOUSE_WHEEL, &event);
 					break;
 
 
 				case SDL_MOUSEMOTION:
-					executeCallbacks(WindowEventType::MOUSE_MOVE, event);
+					executeCallbacks(WindowEventType::MOUSE_MOVE, &event);
 					break;
 
 				case SDL_QUIT:
 					status = 1;
-					executeCallbacks(WindowEventType::CLOSE, event);
+					executeCallbacks(WindowEventType::CLOSE, &event);
 					break;
 
 				case SDL_WINDOWEVENT:
 					switch (event.window.event) {
 						case SDL_WINDOWEVENT_RESIZED:
 						case SDL_WINDOWEVENT_SIZE_CHANGED:
-							executeCallbacks(WindowEventType::RESIZE, event);
+							executeCallbacks(WindowEventType::RESIZE, &event);
 							break;
 					}
 					break;

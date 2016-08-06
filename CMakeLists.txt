@@ -60,6 +60,7 @@ set(client_sources
 	"src/render/Technique"
 	"src/render/Transform"
 	"src/serial/Serialization"
+	"src/serial/StreamBuffer"
 	"src/window/Window"
 	"src/Common"
 	"src/client")
@@ -82,6 +83,7 @@ set(server_sources
 	"src/net/Packet"
 	"src/render/Transform"
 	"src/serial/Serialization"
+	"src/serial/StreamBuffer"
 	"src/Common"
 	"src/server")
 # Construct the executable

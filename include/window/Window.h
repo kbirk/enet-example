@@ -35,10 +35,10 @@ enum class WindowEventType {
 
 struct WindowEvent {
 	WindowEventType type;
-	SDL_Event originalEvent;
+	SDL_Event* originalEvent;
 };
 
-typedef std::function<void(WindowEvent)> WindowEventFunc;
+typedef std::function<void(WindowEvent&)> WindowEventFunc;
 
 namespace Window {
 	void setup();

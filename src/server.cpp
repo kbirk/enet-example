@@ -1,9 +1,12 @@
 #include "Common.h"
+#include "protocol/Command.h"
 #include "log/Log.h"
 #include "net/Message.h"
 #include "net/Server.h"
 #include "render/Transform.h"
-#include "serial/Serialization.h"
+#include "serial/StreamBuffer.h"
+
+#include "glm/glm.hpp"
 
 #include <algorithm>
 #include <csignal>
@@ -35,17 +38,28 @@ std::vector<uint8_t> serialize_frame() {
 	if (frame.empty()) {
 		return std::vector<uint8_t>();
 	}
-	uint32_t byteSize = Transform::alloc()->serialize(nullptr);
-	uint32_t totalSize = (byteSize + sizeof(uint32_t)) * frame.size();
-	std::vector<uint8_t> data(totalSize);
-	uint32_t offset = 0;
+	StreamBuffer stream;
 	for (auto iter : frame) {
 		auto id = iter.first;
 		auto transform = iter.second;
-		offset += serialize(&data[0], id, offset);
-		offset += transform->serialize(&data[0], offset);
+		stream << id << transform;
 	}
-	return data;
+	return stream.buffer();
+}
+
+Command deserialize_command(const uint8_t* src, uint32_t numBytes) {
+	StreamBuffer stream(src, numBytes);
+	auto command = Command();
+	stream >> command;
+	return command;
+}
+
+void apply_command(Transform::Shared& transform, const Command& command) {
+	switch (command.type) {
+		case CommandType::MOVE:
+			transform->translateGlobal(command.direction);
+			break;
+	}
 }
 
 void process_frame(std::time_t stamp, std::time_t delta) {
@@ -104,6 +118,14 @@ int main(int argc, char** argv) {
 				LOG_DEBUG("Connection from client_" << msg->id() << " lost");
 				frame.erase(msg->id());
 
+			} else if (msg->type() == MessageType::DATA) {
+
+				LOG_DEBUG("Message recieved from client");
+				auto command = deserialize_command(
+					msg->packet()->data(),
+					msg->packet()->numBytes());
+				apply_command(frame[msg->id()], command);
+
 			}
 		}
 
@@ -136,5 +158,6 @@ int main(int argc, char** argv) {
 		frameCount++;
 	}
 
+	// stop server and disconnect all clients
 	server->stop();
 }

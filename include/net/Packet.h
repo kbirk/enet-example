@@ -14,12 +14,12 @@ class Packet {
 	public:
 
 		typedef std::shared_ptr<Packet> Shared;
-		static Shared alloc(const void*, uint32_t);
+		static Shared alloc(const uint8_t*, uint32_t);
 
-		Packet(const void*, uint32_t);
+		Packet(const uint8_t*, uint32_t);
 		~Packet();
 
-		const void* data() const;
+		const uint8_t* data() const;
 		uint32_t numBytes() const;
 
 	private:
@@ -29,6 +29,6 @@ class Packet {
 		// prevent assignment
 		Packet& operator= (const Packet&);
 
-		void* data_;
+		uint8_t* data_;
 		uint32_t numBytes_;
 };

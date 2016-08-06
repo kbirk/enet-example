@@ -11,10 +11,11 @@
 #include "log/Log.h"
 #include "net/Client.h"
 #include "net/Message.h"
+#include "protocol/Command.h"
 #include "render/RenderCommand.h"
 #include "render/Renderer.h"
 #include "render/Transform.h"
-#include "serial/Serialization.h"
+#include "serial/StreamBuffer.h"
 #include "window/Window.h"
 
 #include <glm/glm.hpp>
@@ -48,7 +49,8 @@ float32_t distance = DEFAULT_DISTANCE;
 
 bool quit = false;
 
-VertexFragmentShader::Shared shader;
+VertexFragmentShader::Shared flatShader;
+VertexFragmentShader::Shared phongShader;
 VertexArrayObject::Shared cube;
 VertexArrayObject::Shared x;
 VertexArrayObject::Shared y;
@@ -111,26 +113,29 @@ std::string shader_path(const std::string& str, const std::string& type) {
 	return "resources/shaders/" + str + "." + type;
 }
 
-
 void load_shader() {
-	shader = VertexFragmentShader::alloc();
-	shader->create(shader_path("flat", "vert"), shader_path("flat", "frag"));
+	// flat
+	flatShader = VertexFragmentShader::alloc();
+	flatShader->create(shader_path("flat", "vert"), shader_path("flat", "frag"));
+	// phong
+	phongShader = VertexFragmentShader::alloc();
+	phongShader->create(shader_path("phong", "vert"), shader_path("phong", "frag"));
 }
 
 void load_cube() {
 	// positions
 	auto positions = VertexBufferObject::alloc();
 	positions->upload(Cube::positions());
-	// uvs
-	auto uvs = VertexBufferObject::alloc();
-	uvs->upload(Cube::uvs());
+	// normals
+	auto normals = VertexBufferObject::alloc();
+	normals->upload(Cube::normals());
 	// indices
 	auto indices = ElementArrayBufferObject::alloc();
 	indices->upload(Cube::indices());
 	// vao
 	cube = VertexArrayObject::alloc();
 	cube->attach(positions, VertexAttributePointer::alloc(0, 3, GL_FLOAT));
-	cube->attach(uvs, VertexAttributePointer::alloc(1, 2, GL_FLOAT));
+	cube->attach(normals, VertexAttributePointer::alloc(1, 3, GL_FLOAT));
 	cube->attach(indices);
 	cube->upload();
 }
@@ -162,6 +167,24 @@ void load_axes() {
 	z = load_axis(glm::vec3(0, 0, 1));
 }
 
+RenderCommand::Shared render_phong(VertexArrayObject::Shared vao, glm::mat4 model) {
+	auto command = RenderCommand::alloc();
+	command->uniforms[UniformType::MODEL_MATRIX] = Uniform::alloc(model);
+	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->viewMatrix());
+	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(projection);
+	command->uniforms[UniformType::LIGHT_POSITION0] = Uniform::alloc(glm::vec3(0.0, 10.0, 10.0));
+	command->uniforms[UniformType::SPECULAR_COLOR] = Uniform::alloc(glm::vec4(1.0, 1.0, 1.0, 1.0));
+	command->uniforms[UniformType::DIFFUSE_COLOR] = Uniform::alloc(glm::vec4(0.5, 0.5, 0.5, 1.0));
+	command->uniforms[UniformType::AMBIENT_COLOR] = Uniform::alloc(glm::vec4(0.2, 0.2, 0.2, 1.0));
+	command->uniforms[UniformType::SHININESS] = Uniform::alloc(10.0f);
+	command->enables.push_back(GL_DEPTH_TEST);
+	command->enables.push_back(GL_BLEND);
+	command->viewport = viewport;
+	command->shader = phongShader;
+	command->vao = vao;
+	return command;
+}
+
 RenderCommand::Shared render_flat(VertexArrayObject::Shared vao, glm::mat4 model) {
 	auto command = RenderCommand::alloc();
 	command->uniforms[UniformType::MODEL_MATRIX] = Uniform::alloc(model);
@@ -174,7 +197,7 @@ RenderCommand::Shared render_flat(VertexArrayObject::Shared vao, glm::mat4 model
 	command->enables.push_back(GL_DEPTH_TEST);
 	command->enables.push_back(GL_BLEND);
 	command->viewport = viewport;
-	command->shader = shader;
+	command->shader = flatShader;
 	command->vao = vao;
 	return command;
 }
@@ -186,7 +209,7 @@ RenderCommand::Shared render_axis(const VertexArrayObject::Shared& vao, const gl
 	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(projection);
 	command->uniforms[UniformType::DIFFUSE_COLOR] = Uniform::alloc(color);
 	command->enables.push_back(GL_DEPTH_TEST);
-	command->shader = shader;
+	command->shader = flatShader;
 	command->vao = vao;
 	return command;
 }
@@ -225,21 +248,26 @@ void update_view() {
 	projection = glm::perspective(FIELD_OF_VIEW, float32_t(size.x) / float32_t(size.y), NEAR_PLANE, FAR_PLANE);
 }
 
-void deserialize_frame(const uint8_t* src, uint32_t totalBytes) {
-	if (totalBytes == 0) {
+void deserialize_frame(const uint8_t* src, uint32_t numBytes) {
+	if (numBytes == 0) {
 		return;
 	}
 	auto frame = Frame();
-	uint32_t offset = 0;
-	while (offset < totalBytes) {
-		auto transform = Transform::alloc();
+	StreamBuffer stream(src, numBytes);
+	while (!stream.eof()) {
 		uint32_t id = 0;
-		offset += deserialize(&id, src, offset);
-		offset += transform->deserialize(src, offset);
+		auto transform = Transform::alloc();
+		stream >> id >> transform;
 		frame[id] = transform;
 	}
 	addFrame(frame);
 	return;
+}
+
+std::vector<uint8_t> serialize_command(const Command& command) {
+	StreamBuffer stream;
+	stream << command;
+	return stream.buffer();
 }
 
 bool process_frame(std::time_t now, std::time_t delta) {
@@ -275,7 +303,7 @@ bool process_frame(std::time_t now, std::time_t delta) {
 	// draw transforms
 	for (auto iter : frame) {
 		auto transform = iter.second;
-		Renderer::render(render_flat(cube, transform->matrix()));
+		Renderer::render(render_phong(cube, transform->matrix()));
 	}
 
 	// swap back buffer
@@ -291,17 +319,17 @@ void load_viewport() {
 	camera->setTranslation(glm::vec3(0, 0.0, DEFAULT_DISTANCE));
 }
 
-void handle_mouse_down(WindowEvent event) {
+void handle_mouse_down(WindowEvent& event) {
 	down = true;
 }
 
-void handle_mouse_up(WindowEvent event) {
+void handle_mouse_up(WindowEvent& event) {
 	down = false;
 }
 
-void handle_mouse_move(WindowEvent event) {
-	int32_t dx = event.originalEvent.motion.xrel;
-	int32_t dy = event.originalEvent.motion.yrel;
+void handle_mouse_move(WindowEvent& event) {
+	int32_t dx = event.originalEvent->motion.xrel;
+	int32_t dy = event.originalEvent->motion.yrel;
 	if (down) {
 		float32_t xAngle = dx * X_FACTOR * (M_PI / 180.0);
 		float32_t yAngle = dy * Y_FACTOR * (M_PI / 180.0);
@@ -312,12 +340,44 @@ void handle_mouse_move(WindowEvent event) {
 	}
 }
 
-void mouse_wheel(WindowEvent event) {
-	float32_t y = event.originalEvent.wheel.y;
+void handle_mouse_wheel(WindowEvent& event) {
+	float32_t y = event.originalEvent->wheel.y;
 	distance += (y * -SCROLL_FACTOR * MAX_DISTANCE);
 	distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
 	camera->setTranslation(glm::vec3(0, 0, 0));
 	camera->translateLocal(glm::vec3(0, 0, distance));
+}
+
+void handle_keyboard(WindowEvent& event) {
+	SDL_KeyboardEvent* key = &event.originalEvent->key;
+	Command command;
+	command.type = CommandType::MOVE;
+	command.direction = glm::vec3(0, 0, 0);
+	switch (key->keysym.sym) {
+		case SDLK_w:
+			command.direction += glm::vec3(0, 0, -1);
+			break;
+
+		case SDLK_a:
+			command.direction += glm::vec3(-1, 0, 0);
+			break;
+
+		case SDLK_s:
+			command.direction += glm::vec3(0, 0, 1);
+			break;
+
+		case SDLK_d:
+			command.direction += glm::vec3(1, 0, 0);
+			break;
+
+		default:
+			return;
+	}
+	command.direction = glm::normalize(command.direction);
+	// serialize command
+ 	auto bytes = serialize_command(command);
+	// send command
+	client->send(PacketType::RELIABLE, Packet::alloc(&bytes[0], bytes.size()));
 }
 
 int main(int argc, char** argv) {
@@ -333,14 +393,15 @@ int main(int argc, char** argv) {
 	Window::on(WindowEventType::MOUSE_LEFT_UP, handle_mouse_up);
 	Window::on(WindowEventType::MOUSE_LEFT_DOWN, handle_mouse_down);
 	Window::on(WindowEventType::MOUSE_MOVE, handle_mouse_move);
-	Window::on(WindowEventType::MOUSE_WHEEL, mouse_wheel);
-
-	client = Client::alloc();
+	Window::on(WindowEventType::MOUSE_WHEEL, handle_mouse_wheel);
+	Window::on(WindowEventType::KEY_UP, handle_keyboard);
 
 	load_viewport();
 	load_cube();
 	load_shader();
 	load_axes();
+
+	client = Client::alloc();
 
 	if (client->connect(HOST, PORT)) {
 		return 1;
@@ -373,17 +434,13 @@ int main(int argc, char** argv) {
 				break;
 			} else if (msg->type() == MessageType::DATA) {
 				// handle message
-				const uint8_t* data = (const uint8_t*)(msg->packet()->data());
-				uint32_t numBytes = msg->packet()->numBytes();
+				auto data = msg->packet()->data();
+				auto numBytes = msg->packet()->numBytes();
 				deserialize_frame(data, numBytes);
 				addFrameStamp(elapsed);
 				last = now;
 			}
 		}
-
-		// send message to server
-		// std::string msg = "msg id=" + std::to_string(std::rand());
-		// client->send(PacketType::RELIABLE, Packet::alloc(msg.c_str(), msg.size()));
 
 		// check if exit
 		if (quit) {
@@ -391,6 +448,7 @@ int main(int argc, char** argv) {
 		}
 	}
 
+	// attempt to disconnect gracefully
 	client->disconnect();
 
 	Window::teardown();

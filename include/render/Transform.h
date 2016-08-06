@@ -46,9 +46,6 @@ class Transform {
 		glm::vec3 y() const;
 		glm::vec3 z() const;
 
-		uint32_t serialize(uint8_t*, uint32_t = 0) const;
-		uint32_t deserialize(const uint8_t*, uint32_t = 0);
-
 	private:
 
 		// prevent copy-construction
