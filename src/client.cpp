@@ -270,7 +270,43 @@ std::vector<uint8_t> serialize_command(const Command& command) {
 	return stream.buffer();
 }
 
+void handle_keyboard(const uint8_t* states) {
+
+	float32_t SPEED = 0.1;
+	glm::vec3 direction(0, 0, 0);
+
+	if (states[SDL_SCANCODE_W]) {
+		direction += glm::vec3(0, 0, -1);
+	}
+	if (states[SDL_SCANCODE_A]) {
+		direction += glm::vec3(-1, 0, 0);
+	}
+	if (states[SDL_SCANCODE_S]) {
+		direction += glm::vec3(0, 0, 1);
+	}
+	if (states[SDL_SCANCODE_D]) {
+		direction += glm::vec3(1, 0, 0);
+	}
+
+	if (glm::length(direction) == 0) {
+		return;
+	}
+
+	Command command;
+	command.type = CommandType::MOVE;
+	command.direction = glm::normalize(direction) * SPEED;
+	// serialize command
+ 	auto bytes = serialize_command(command);
+	// send command
+	client->send(PacketType::RELIABLE, Packet::alloc(&bytes[0], bytes.size()));
+}
+
 bool process_frame(std::time_t now, std::time_t delta) {
+
+	// don't process until we've buffered enough frames
+	if (frames.size() < NUM_BUFFERED_FRAMES) {
+		return false;
+	}
 
 	// update viewport and projection
 	update_view();
@@ -280,9 +316,8 @@ bool process_frame(std::time_t now, std::time_t delta) {
 		return true;
 	}
 
-	if (frames.size() < NUM_BUFFERED_FRAMES) {
-		return false;
-	}
+	// handle keyboard state
+	handle_keyboard(Window::pollKeyboard());
 
 	// get t value
 	float32_t frameRate = getFrameRate();
@@ -319,11 +354,11 @@ void load_viewport() {
 	camera->setTranslation(glm::vec3(0, 0.0, DEFAULT_DISTANCE));
 }
 
-void handle_mouse_down(WindowEvent& event) {
+void handle_mouse_press(WindowEvent& event) {
 	down = true;
 }
 
-void handle_mouse_up(WindowEvent& event) {
+void handle_mouse_release(WindowEvent& event) {
 	down = false;
 }
 
@@ -348,38 +383,6 @@ void handle_mouse_wheel(WindowEvent& event) {
 	camera->translateLocal(glm::vec3(0, 0, distance));
 }
 
-void handle_keyboard(WindowEvent& event) {
-	SDL_KeyboardEvent* key = &event.originalEvent->key;
-	Command command;
-	command.type = CommandType::MOVE;
-	command.direction = glm::vec3(0, 0, 0);
-	switch (key->keysym.sym) {
-		case SDLK_w:
-			command.direction += glm::vec3(0, 0, -1);
-			break;
-
-		case SDLK_a:
-			command.direction += glm::vec3(-1, 0, 0);
-			break;
-
-		case SDLK_s:
-			command.direction += glm::vec3(0, 0, 1);
-			break;
-
-		case SDLK_d:
-			command.direction += glm::vec3(1, 0, 0);
-			break;
-
-		default:
-			return;
-	}
-	command.direction = glm::normalize(command.direction);
-	// serialize command
- 	auto bytes = serialize_command(command);
-	// send command
-	client->send(PacketType::RELIABLE, Packet::alloc(&bytes[0], bytes.size()));
-}
-
 int main(int argc, char** argv) {
 
 	std::srand(std::time(0));
@@ -390,11 +393,10 @@ int main(int argc, char** argv) {
 
 	Window::setup();
 
-	Window::on(WindowEventType::MOUSE_LEFT_UP, handle_mouse_up);
-	Window::on(WindowEventType::MOUSE_LEFT_DOWN, handle_mouse_down);
+	Window::on(WindowEventType::MOUSE_LEFT_RELEASE, handle_mouse_release);
+	Window::on(WindowEventType::MOUSE_LEFT_PRESS, handle_mouse_press);
 	Window::on(WindowEventType::MOUSE_MOVE, handle_mouse_move);
 	Window::on(WindowEventType::MOUSE_WHEEL, handle_mouse_wheel);
-	Window::on(WindowEventType::KEY_UP, handle_keyboard);
 
 	load_viewport();
 	load_cube();

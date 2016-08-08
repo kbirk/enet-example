@@ -105,11 +105,11 @@ namespace Window {
 					break;
 
 				case SDL_CONTROLLERBUTTONDOWN:
-					executeCallbacks(WindowEventType::CONTROLLER_DOWN, &event);
+					executeCallbacks(WindowEventType::CONTROLLER_PRESS, &event);
 					break;
 
 				case SDL_CONTROLLERBUTTONUP:
-					executeCallbacks(WindowEventType::CONTROLLER_UP, &event);
+					executeCallbacks(WindowEventType::CONTROLLER_RELEASE, &event);
 					break;
 
 				case SDL_CONTROLLERAXISMOTION:
@@ -117,7 +117,7 @@ namespace Window {
 					break;
 
 				case SDL_KEYDOWN:
-					executeCallbacks(WindowEventType::KEY_DOWN, &event);
+					executeCallbacks(WindowEventType::KEY_PRESS, &event);
 					break;
 
 				case SDL_KEYUP:
@@ -125,21 +125,21 @@ namespace Window {
 					if (event.key.keysym.sym == SDLK_ESCAPE) {
 						status = 1; // set status to 1 to exit main loop
 					}
-					executeCallbacks(WindowEventType::KEY_UP, &event);
+					executeCallbacks(WindowEventType::KEY_RELEASE, &event);
 					break;
 
 				case SDL_MOUSEBUTTONDOWN:
 					switch (event.button.button) {
 						case SDL_BUTTON_LEFT:
-							executeCallbacks(WindowEventType::MOUSE_LEFT_DOWN, &event);
+							executeCallbacks(WindowEventType::MOUSE_LEFT_PRESS, &event);
 							break;
 
 						case SDL_BUTTON_RIGHT:
-							executeCallbacks(WindowEventType::MOUSE_RIGHT_DOWN, &event);
+							executeCallbacks(WindowEventType::MOUSE_RIGHT_PRESS, &event);
 							break;
 
 						case SDL_BUTTON_MIDDLE:
-							executeCallbacks(WindowEventType::MOUSE_MIDDLE_DOWN, &event);
+							executeCallbacks(WindowEventType::MOUSE_MIDDLE_PRESS, &event);
 							break;
 					}
 					break;
@@ -147,15 +147,15 @@ namespace Window {
 				case SDL_MOUSEBUTTONUP:
 					switch (event.button.button) {
 						case SDL_BUTTON_LEFT:
-							executeCallbacks(WindowEventType::MOUSE_LEFT_UP, &event);
+							executeCallbacks(WindowEventType::MOUSE_LEFT_RELEASE, &event);
 							break;
 
 						case SDL_BUTTON_RIGHT:
-							executeCallbacks(WindowEventType::MOUSE_RIGHT_UP, &event);
+							executeCallbacks(WindowEventType::MOUSE_RIGHT_RELEASE, &event);
 							break;
 
 						case SDL_BUTTON_MIDDLE:
-							executeCallbacks(WindowEventType::MOUSE_MIDDLE_UP, &event);
+							executeCallbacks(WindowEventType::MOUSE_MIDDLE_RELEASE, &event);
 							break;
 					}
 					break;
@@ -185,6 +185,10 @@ namespace Window {
 			}
 		}
 		return (status == 1);
+	}
+
+	const uint8_t* pollKeyboard() {
+		return SDL_GetKeyboardState(nullptr);
 	}
 
 }
