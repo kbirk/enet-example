@@ -9,12 +9,11 @@
 #include "gl/Uniform.h"
 #include "gl/UniformType.h"
 #include "log/Log.h"
+#include "math/Transform.h"
 #include "net/Client.h"
 #include "net/Message.h"
-#include "protocol/Command.h"
 #include "render/RenderCommand.h"
 #include "render/Renderer.h"
-#include "render/Transform.h"
 #include "serial/StreamBuffer.h"
 #include "window/Window.h"
 
@@ -257,17 +256,11 @@ void deserialize_frame(const uint8_t* src, uint32_t numBytes) {
 	while (!stream.eof()) {
 		uint32_t id = 0;
 		auto transform = Transform::alloc();
-		stream >> id >> transform;
+		stream >> id >> *transform;
 		frame[id] = transform;
 	}
 	addFrame(frame);
 	return;
-}
-
-std::vector<uint8_t> serialize_command(const Command& command) {
-	StreamBuffer stream;
-	stream << command;
-	return stream.buffer();
 }
 
 void handle_keyboard(const uint8_t* states) {
@@ -292,11 +285,13 @@ void handle_keyboard(const uint8_t* states) {
 		return;
 	}
 
-	Command command;
-	command.type = CommandType::MOVE;
-	command.direction = glm::normalize(direction) * SPEED;
+	direction = glm::normalize(direction) * SPEED;
+
 	// serialize command
- 	auto bytes = serialize_command(command);
+	StreamBuffer stream;
+	stream << direction;
+ 	auto bytes = stream.buffer();
+
 	// send command
 	client->send(PacketType::RELIABLE, Packet::alloc(&bytes[0], bytes.size()));
 }

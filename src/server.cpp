@@ -1,9 +1,8 @@
 #include "Common.h"
-#include "protocol/Command.h"
 #include "log/Log.h"
+#include "math/Transform.h"
 #include "net/Message.h"
 #include "net/Server.h"
-#include "render/Transform.h"
 #include "serial/StreamBuffer.h"
 
 #include "glm/glm.hpp"
@@ -42,24 +41,9 @@ std::vector<uint8_t> serialize_frame() {
 	for (auto iter : frame) {
 		auto id = iter.first;
 		auto transform = iter.second;
-		stream << id << transform;
+		stream << id << *transform;
 	}
 	return stream.buffer();
-}
-
-Command deserialize_command(const uint8_t* src, uint32_t numBytes) {
-	StreamBuffer stream(src, numBytes);
-	auto command = Command();
-	stream >> command;
-	return command;
-}
-
-void apply_command(Transform::Shared& transform, const Command& command) {
-	switch (command.type) {
-		case CommandType::MOVE:
-			transform->translateGlobal(command.direction);
-			break;
-	}
 }
 
 void process_frame(std::time_t stamp, std::time_t delta) {
@@ -77,6 +61,13 @@ void process_frame(std::time_t stamp, std::time_t delta) {
 		}
 	}
 }
+
+// void send_client_info(uint32_t id) {
+// 	StreamBuffer stream;
+// 	stream << id;
+// 	auto bytes = stream.buffer();
+// 	server->send(id, PacketType::RELIABLE, Packet::alloc(&bytes[0], bytes.size()));
+// }
 
 int main(int argc, char** argv) {
 
@@ -112,6 +103,8 @@ int main(int argc, char** argv) {
 
 				LOG_DEBUG("Connection from client_" << msg->id() << " received");
 				frame[msg->id()] = Transform::alloc();
+				// inform client what it's ID is
+				// send_client_info(msg->id());
 
 			} else if (msg->type() == MessageType::DISCONNECT) {
 
@@ -121,10 +114,12 @@ int main(int argc, char** argv) {
 			} else if (msg->type() == MessageType::DATA) {
 
 				LOG_DEBUG("Message recieved from client");
-				auto command = deserialize_command(
-					msg->packet()->data(),
-					msg->packet()->numBytes());
-				apply_command(frame[msg->id()], command);
+				auto data = msg->packet()->data();
+				auto numBytes = msg->packet()->numBytes();
+				StreamBuffer stream(data, numBytes);
+				glm::vec3 direction;
+				stream >> direction;
+				frame[msg->id()]->translateGlobal(direction);
 
 			}
 		}

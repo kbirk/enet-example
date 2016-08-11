@@ -49,6 +49,7 @@ set(client_sources
 	"src/gl/UniformBlockDescriptor"
 	"src/gl/Viewport"
 	"src/log/Log"
+	"src/math/Transform"
 	"src/net/Client"
 	"src/net/Message"
 	"src/net/Packet"
@@ -58,7 +59,6 @@ set(client_sources
 	"src/render/RenderCommand"
 	"src/render/Renderer"
 	"src/render/Technique"
-	"src/render/Transform"
 	"src/serial/Serialization"
 	"src/serial/StreamBuffer"
 	"src/window/Window"
@@ -78,10 +78,10 @@ target_link_libraries(client
 # Add source files
 set(server_sources
 	"src/log/Log"
+	"src/math/Transform"
 	"src/net/Server"
 	"src/net/Message"
 	"src/net/Packet"
-	"src/render/Transform"
 	"src/serial/Serialization"
 	"src/serial/StreamBuffer"
 	"src/Common"

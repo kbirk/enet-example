@@ -59,29 +59,17 @@ StreamBuffer& StreamBuffer::operator<< (float32_t data) {
 }
 
 StreamBuffer& StreamBuffer::operator<< (const glm::vec3& data) {
-	*this << pack754_32(data.x)
-		<< pack754_32(data.y)
-		<< pack754_32(data.z);
+	*this << data.x
+		<< data.y
+		<< data.z;
 	return *this;
 }
 
 StreamBuffer& StreamBuffer::operator<< (const glm::quat& data) {
-	*this << pack754_32(data.x)
-		<< pack754_32(data.y)
-		<< pack754_32(data.z)
-		<< pack754_32(data.w);
-	return *this;
-}
-
-StreamBuffer& StreamBuffer::operator<< (const Transform::Shared& data) {
-	*this << data->translation()
-		<< data->rotation()
-		<< data->scale();
-	return *this;
-}
-
-StreamBuffer& StreamBuffer::operator<< (const Command& data) {
-	*this << uint8_t(data.type) << data.direction;
+	*this << data.x
+		<< data.y
+		<< data.z
+		<< data.w;
 	return *this;
 }
 
@@ -98,9 +86,9 @@ StreamBuffer& StreamBuffer::operator>> (uint32_t& data) {
 }
 
 StreamBuffer& StreamBuffer::operator>> (float32_t& data) {
-	uint32_t packed;
+	uint32_t packed = 0;
 	*this >> packed;
-	std::memcpy(&data, &packed, sizeof(packed));
+	data = unpack754_32(packed);
 	return *this;
 }
 
@@ -116,25 +104,5 @@ StreamBuffer& StreamBuffer::operator>> (glm::quat& data) {
 		>> data.y
 		>> data.z
 		>> data.w;
-	return *this;
-}
-
-StreamBuffer& StreamBuffer::operator>> (Transform::Shared& data) {
-	glm::vec3 translation;
-	glm::quat rotation;
-	glm::vec3 scale;
-	*this >> translation
-		>> rotation
-		>> scale;
-	data->setTranslation(translation);
-	data->setRotation(rotation);
-	data->setScale(scale);
-	return *this;
-}
-
-StreamBuffer& StreamBuffer::operator>> (Command& data) {
-	uint8_t typ;
-	*this >> typ >> data.direction;
-	data.type = CommandType(typ);
 	return *this;
 }

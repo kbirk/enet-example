@@ -46,8 +46,8 @@ namespace Window {
 		SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
 		SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 		// muli-sampling
-		// SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
-		// SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+		SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 		// create an application window with the following settings:
 		window = SDL_CreateWindow(
 			WINDOW_TITLE.c_str(), // window title

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+#include "serial/StreamBuffer.h"
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -46,14 +47,15 @@ class Transform {
 		glm::vec3 y() const;
 		glm::vec3 z() const;
 
-	private:
+		friend StreamBuffer& operator<< (StreamBuffer&, const Transform&);
+		friend StreamBuffer& operator>> (StreamBuffer&, Transform&);
 
-		// prevent copy-construction
-		Transform(const Transform&);
-		// prevent assignment
-		Transform& operator= (const Transform&);
+	private:
 
 		glm::vec3 translation_;
 		glm::quat rotation_;
 		glm::vec3 scale_;
 };
+
+StreamBuffer& operator<< (StreamBuffer&, const Transform&);
+StreamBuffer& operator>> (StreamBuffer&, Transform&);

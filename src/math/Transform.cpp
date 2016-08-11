@@ -1,4 +1,4 @@
-#include "render/Transform.h"
+#include "math/Transform.h"
 
 #include <glm/ext.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -150,4 +150,18 @@ glm::vec3 Transform::z() const {
 		yz = rotation_.y*rotation_.z,
 		yw = rotation_.y*rotation_.w;
 	return normalize(glm::vec3(2*xz + 2*yw, 2*yz - 2*xw, 1 - 2*xx - 2*yy));
+}
+
+StreamBuffer& operator<< (StreamBuffer& stream, const Transform& transform) {
+	stream << transform.translation_
+		<< transform.rotation_
+		<< transform.scale_;
+	return stream;
+}
+
+StreamBuffer& operator>> (StreamBuffer& stream, Transform& transform) {
+	stream >> transform.translation_
+		>> transform.rotation_
+		>> transform.scale_;
+	return stream;
 }

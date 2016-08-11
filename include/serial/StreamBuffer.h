@@ -2,8 +2,6 @@
 
 #include "Common.h"
 #include "log/Log.h"
-#include "render/Transform.h"
-#include "protocol/Command.h"
 
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
@@ -34,16 +32,12 @@ class StreamBuffer {
 		StreamBuffer& operator<< (float32_t);
 		StreamBuffer& operator<< (const glm::vec3&);
 		StreamBuffer& operator<< (const glm::quat&);
-		StreamBuffer& operator<< (const Transform::Shared&);
-		StreamBuffer& operator<< (const Command&);
 
 		StreamBuffer& operator>> (uint8_t&);
 		StreamBuffer& operator>> (uint32_t&);
 		StreamBuffer& operator>> (float32_t&);
 		StreamBuffer& operator>> (glm::vec3&);
 		StreamBuffer& operator>> (glm::quat&);
-		StreamBuffer& operator>> (Transform::Shared&);
-		StreamBuffer& operator>> (Command&);
 
 	private:
 
