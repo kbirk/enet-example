@@ -2,6 +2,14 @@
 
 #include "serial/Serialization.h"
 
+StreamBuffer::Shared StreamBuffer::alloc(size_t numBytes) {
+	return std::make_shared<StreamBuffer>(numBytes);
+}
+
+StreamBuffer::Shared StreamBuffer::alloc(const uint8_t* data, size_t numBytes) {
+	return std::make_shared<StreamBuffer>(data, numBytes);
+}
+
 StreamBuffer::StreamBuffer(size_t numBytes)
 	: gpos_(0)
 	, ppos_(0) {
@@ -35,74 +43,68 @@ size_t StreamBuffer::tellp() const {
 	return ppos_;
 }
 
+size_t StreamBuffer::size() const {
+	return buffer_.size();
+}
+
 bool StreamBuffer::eof() const {
 	return gpos_ >= buffer_.size();
 }
 
-StreamBuffer& StreamBuffer::operator<< (uint8_t data) {
+void StreamBuffer::write(uint8_t data) {
 	buffer_.push_back(data);
 	ppos_++;
-	return *this;
 }
 
-StreamBuffer& StreamBuffer::operator<< (uint32_t data) {
+void StreamBuffer::write(uint32_t data) {
 	std::vector<uint8_t> buff(sizeof(data), 0);
-	memcpy(&buff[0], &data, sizeof(data));
+	std::memcpy(&buff[0], &data, sizeof(data));
 	buffer_.insert(buffer_.end(), buff.begin(), buff.end());
 	ppos_ += sizeof(data);
-	return *this;
 }
 
-StreamBuffer& StreamBuffer::operator<< (float32_t data) {
-	*this << pack754_32(data);
-	return *this;
+void StreamBuffer::write(float32_t data) {
+	write(pack754_32(data));
 }
 
-StreamBuffer& StreamBuffer::operator<< (const glm::vec3& data) {
-	*this << data.x
-		<< data.y
-		<< data.z;
-	return *this;
+void StreamBuffer::write(const glm::vec3& data) {
+	write(data.x);
+	write(data.y);
+	write(data.z);
 }
 
-StreamBuffer& StreamBuffer::operator<< (const glm::quat& data) {
-	*this << data.x
-		<< data.y
-		<< data.z
-		<< data.w;
-	return *this;
+void StreamBuffer::write(const glm::quat& data) {
+	write(data.x);
+	write(data.y);
+	write(data.z);
+	write(data.w);
 }
 
-StreamBuffer& StreamBuffer::operator>> (uint8_t& data) {
+void StreamBuffer::read(uint8_t& data) {
 	std::memcpy(&data, &buffer_[gpos_], sizeof(data));
 	gpos_++;
-	return *this;
 }
 
-StreamBuffer& StreamBuffer::operator>> (uint32_t& data) {
+void StreamBuffer::read(uint32_t& data) {
 	std::memcpy(&data, &buffer_[gpos_], sizeof(data));
 	gpos_ += sizeof(data);
-	return *this;
 }
 
-StreamBuffer& StreamBuffer::operator>> (float32_t& data) {
+void StreamBuffer::read(float32_t& data) {
 	uint32_t packed = 0;
-	*this >> packed;
+	read(packed);
 	data = unpack754_32(packed);
-	return *this;
 }
 
-StreamBuffer& StreamBuffer::operator>> (glm::vec3& data) {
-	*this >> data.x
-		>> data.y
-		>> data.z;
-	return *this;
+void StreamBuffer::read(glm::vec3& data) {
+	read(data.x);
+	read(data.y);
+	read(data.z);
 }
 
-StreamBuffer& StreamBuffer::operator>> (glm::quat& data) {
-	*this >> data.x
-		>> data.y
-		>> data.z
-		>> data.w;
-	return *this;
+void StreamBuffer::read(glm::quat& data) {
+	read(data.x);
+	read(data.y);
+	read(data.z);
+	read(data.w);
 }

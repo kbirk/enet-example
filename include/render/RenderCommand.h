@@ -19,7 +19,7 @@ enum class FunctionType {
 	//BLEND_EQUATIONS,
 };
 
-struct RenderCommand {
+class RenderCommand {
 
 	public:
 

@@ -2,7 +2,9 @@
 
 #include "Common.h"
 #include "log/Log.h"
-#include "net/Packet.h"
+
+const uint8_t SERVER_ID = 0;
+const time_t CONNECTION_TIMEOUT_MS = 5000;
 
 Client::Shared Client::alloc() {
 	return std::make_shared<Client>();
@@ -121,14 +123,14 @@ bool Client::isConnected() const {
 	return host_->connectedPeers > 0;
 }
 
-void Client::send(PacketType type, const Packet::Shared& packet) const {
+void Client::send(DeliveryType type, const std::vector<uint8_t>& data) const {
 	if (!isConnected()) {
 		LOG_DEBUG("Client is not connected to any server");
 		return;
 	}
 	uint32_t channel = 0;
 	uint32_t flags = 0;
-	if (type == PacketType::RELIABLE) {
+	if (type == DeliveryType::RELIABLE) {
 		channel = RELIABLE_CHANNEL;
 		flags = ENET_PACKET_FLAG_RELIABLE;
 	} else {
@@ -137,8 +139,8 @@ void Client::send(PacketType type, const Packet::Shared& packet) const {
 	}
 	// create the packet
 	ENetPacket* p = enet_packet_create(
-		packet->data(),
-		packet->numBytes(),
+		&data[0],
+		data.size(),
 		flags);
 	// send the packet to the peer
 	enet_peer_send(server_, channel, p);
@@ -169,7 +171,7 @@ std::vector<Message::Shared> Client::poll() {
 				auto msg = Message::alloc(
 					SERVER_ID,
 					MessageType::DATA,
-					Packet::alloc(
+					StreamBuffer::alloc(
 						event.packet->data,
 						event.packet->dataLength));
 				msgs.push_back(msg);

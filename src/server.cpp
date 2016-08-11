@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "log/Log.h"
 #include "math/Transform.h"
+#include "net/DeliveryType.h"
 #include "net/Message.h"
 #include "net/Server.h"
 #include "serial/StreamBuffer.h"
@@ -27,23 +28,17 @@ void signal_handler(int32_t signal) {
 	quit = true;
 }
 
-Transform::Shared create_transform() {
-	auto transform = Transform::alloc();
-	// transform->setScale(0.5);
-	return transform;
-}
-
 std::vector<uint8_t> serialize_frame() {
 	if (frame.empty()) {
 		return std::vector<uint8_t>();
 	}
-	StreamBuffer stream;
+	auto stream = StreamBuffer::alloc();
 	for (auto iter : frame) {
 		auto id = iter.first;
 		auto transform = iter.second;
-		stream << id << *transform;
+		stream << id << transform;
 	}
-	return stream.buffer();
+	return stream->buffer();
 }
 
 void process_frame(std::time_t stamp, std::time_t delta) {
@@ -66,7 +61,7 @@ void process_frame(std::time_t stamp, std::time_t delta) {
 // 	StreamBuffer stream;
 // 	stream << id;
 // 	auto bytes = stream.buffer();
-// 	server->send(id, PacketType::RELIABLE, Packet::alloc(&bytes[0], bytes.size()));
+// 	server->send(id, DeliveryType::RELIABLE, bytes);
 // }
 
 int main(int argc, char** argv) {
@@ -80,7 +75,7 @@ int main(int argc, char** argv) {
 	server = Server::alloc();
 
 	uint32_t ARBITRARY_ID = 256; // high enough not to conflict with a client id
-	frame[ARBITRARY_ID] = create_transform();
+	frame[ARBITRARY_ID] = Transform::alloc();
 
 	if (server->start(PORT)) {
 		return 1;
@@ -114,9 +109,7 @@ int main(int argc, char** argv) {
 			} else if (msg->type() == MessageType::DATA) {
 
 				LOG_DEBUG("Message recieved from client");
-				auto data = msg->packet()->data();
-				auto numBytes = msg->packet()->numBytes();
-				StreamBuffer stream(data, numBytes);
+				auto stream = msg->stream();
 				glm::vec3 direction;
 				stream >> direction;
 				frame[msg->id()]->translateGlobal(direction);
@@ -128,8 +121,8 @@ int main(int argc, char** argv) {
 		process_frame(stamp, stamp - last);
 
 		// broadcast to all clients
-		auto msg = serialize_frame();
-		server->broadcast(PacketType::RELIABLE, Packet::alloc(&msg[0], msg.size()));
+		auto bytes = serialize_frame();
+		server->broadcast(DeliveryType::RELIABLE, bytes);
 
 		// check if exit
 		if (quit) {

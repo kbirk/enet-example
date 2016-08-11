@@ -1,6 +1,6 @@
 #pragma once
 
-#include "net/Packet.h"
+#include "serial/StreamBuffer.h"
 
 #include <memory>
 #include <string>
@@ -17,13 +17,13 @@ class Message {
 	public:
 
 		typedef std::shared_ptr<Message> Shared;
-		static Shared alloc(uint32_t, MessageType, Packet::Shared = nullptr);
+		static Shared alloc(uint32_t, MessageType, StreamBuffer::Shared = nullptr);
 
-		Message(uint32_t, MessageType, Packet::Shared = nullptr);
+		Message(uint32_t, MessageType, StreamBuffer::Shared = nullptr);
 
 		uint32_t id() const;
 		MessageType type() const;
-		Packet::Shared packet() const;
+		StreamBuffer::Shared stream() const;
 
 	private:
 
@@ -34,5 +34,5 @@ class Message {
 
 		uint32_t id_;
 		MessageType type_;
-		Packet::Shared packet_;
+		StreamBuffer::Shared stream_;
 };

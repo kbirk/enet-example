@@ -2,7 +2,9 @@
 
 #include "Common.h"
 #include "log/Log.h"
-#include "net/Packet.h"
+
+const uint32_t MAX_CONNECTIONS = 64;
+const time_t CONNECTION_TIMEOUT_MS = 5000;
 
 Server::Shared Server::alloc() {
 	return std::make_shared<Server>();
@@ -131,14 +133,17 @@ uint32_t Server::numClients() const {
 	return host_->connectedPeers;
 }
 
-void Server::broadcast(PacketType type, const Packet::Shared& packet) const {
-	if (numClients() == 0) {
-		// no clients to broadcast to
+void Server::send(uint32_t id, DeliveryType type, const std::vector<uint8_t>& data) const {
+	auto iter = clients_.find(id);
+	if (iter == clients_.end()) {
+		// no client to send to
+		LOG_WARN("No connected client with id: " << id);
 		return;
 	}
+	auto client = iter->second;
 	uint32_t channel = 0;
 	uint32_t flags = 0;
-	if (type == PacketType::RELIABLE) {
+	if (type == DeliveryType::RELIABLE) {
 		channel = RELIABLE_CHANNEL;
 		flags = ENET_PACKET_FLAG_RELIABLE;
 	} else {
@@ -147,8 +152,33 @@ void Server::broadcast(PacketType type, const Packet::Shared& packet) const {
 	}
 	// create the packet
 	ENetPacket* p = enet_packet_create(
-		packet->data(),
-		packet->numBytes(),
+		&data[0],
+		data.size(),
+		flags);
+	// send the packet to the peer
+	enet_peer_send(client, channel, p);
+	// flush / send the packet queue
+	enet_host_flush(host_);
+}
+
+void Server::broadcast(DeliveryType type, const std::vector<uint8_t>& data) const {
+	if (numClients() == 0) {
+		// no clients to broadcast to
+		return;
+	}
+	uint32_t channel = 0;
+	uint32_t flags = 0;
+	if (type == DeliveryType::RELIABLE) {
+		channel = RELIABLE_CHANNEL;
+		flags = ENET_PACKET_FLAG_RELIABLE;
+	} else {
+		channel = UNRELIABLE_CHANNEL;
+		flags = ENET_PACKET_FLAG_UNSEQUENCED;
+	}
+	// create the packet
+	ENetPacket* p = enet_packet_create(
+		&data[0],
+		data.size(),
 		flags);
 	// send the packet to the peer
 	enet_host_broadcast(host_, channel, p);
@@ -166,17 +196,17 @@ std::vector<Message::Shared> Server::poll() {
 			// event occured
 			if (event.type == ENET_EVENT_TYPE_RECEIVE) {
 				// received a packet
-				LOG_DEBUG("A packet of length "
-					<< event.packet->dataLength
-					<< " containing `"
-					<< event.packet->data
-					<< "` was received from client_"
-					<< event.peer->incomingPeerID);
+				// LOG_DEBUG("A packet of length "
+				// 	<< event.packet->dataLength
+				// 	<< " containing `"
+				// 	<< event.packet->data
+				// 	<< "` was received from client_"
+				// 	<< event.peer->incomingPeerID);
 				// add msg
 				auto msg = Message::alloc(
 					event.peer->incomingPeerID,
 					MessageType::DATA,
-					Packet::alloc(
+					StreamBuffer::alloc(
 						event.packet->data,
 						event.packet->dataLength));
 				msgs.push_back(msg);

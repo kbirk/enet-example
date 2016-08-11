@@ -39,7 +39,7 @@ namespace Renderer {
 		// update viewport
 		auto viewport = command->viewport;
 		if (viewport) {
-			if (!viewport_ || *viewport_ != *viewport) {
+			if (!viewport_ || viewport_ != viewport) {
 				glViewport(viewport->x, viewport->y, viewport->width, viewport->height);
 				LOG_OPENGL("glViewport");
 				viewport_ = Viewport::alloc(viewport->x, viewport->y, viewport->width, viewport->height);

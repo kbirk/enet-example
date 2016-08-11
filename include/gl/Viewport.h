@@ -6,7 +6,7 @@
 #include <memory>
 #include <vector>
 
-struct Viewport {
+class Viewport {
 
 	public:
 
@@ -30,8 +30,8 @@ struct Viewport {
 		uint32_t width;
 		uint32_t height;
 
-		friend bool operator== (const Viewport&, const Viewport&);
-		friend bool operator!= (const Viewport&, const Viewport&);
+		friend bool operator== (const Viewport::Shared&, const Viewport::Shared&);
+		friend bool operator!= (const Viewport::Shared&, const Viewport::Shared&);
 
 	private:
 

@@ -10,6 +10,7 @@
 #include "gl/UniformType.h"
 #include "log/Log.h"
 #include "math/Transform.h"
+#include "net/DeliveryType.h"
 #include "net/Client.h"
 #include "net/Message.h"
 #include "render/RenderCommand.h"
@@ -247,20 +248,33 @@ void update_view() {
 	projection = glm::perspective(FIELD_OF_VIEW, float32_t(size.x) / float32_t(size.y), NEAR_PLANE, FAR_PLANE);
 }
 
-void deserialize_frame(const uint8_t* src, uint32_t numBytes) {
-	if (numBytes == 0) {
-		return;
+void handle_mouse_press(WindowEvent& event) {
+	down = true;
+}
+
+void handle_mouse_release(WindowEvent& event) {
+	down = false;
+}
+
+void handle_mouse_move(WindowEvent& event) {
+	int32_t dx = event.originalEvent->motion.xrel;
+	int32_t dy = event.originalEvent->motion.yrel;
+	if (down) {
+		float32_t xAngle = dx * X_FACTOR * (M_PI / 180.0);
+		float32_t yAngle = dy * Y_FACTOR * (M_PI / 180.0);
+		camera->setTranslation(glm::vec3(0, 0, 0));
+		camera->rotateGlobal(xAngle, glm::vec3(0, 1, 0));
+		camera->rotateLocal(yAngle, glm::vec3(1, 0, 0));
+		camera->translateLocal(glm::vec3(0, 0, distance));
 	}
-	auto frame = Frame();
-	StreamBuffer stream(src, numBytes);
-	while (!stream.eof()) {
-		uint32_t id = 0;
-		auto transform = Transform::alloc();
-		stream >> id >> *transform;
-		frame[id] = transform;
-	}
-	addFrame(frame);
-	return;
+}
+
+void handle_mouse_wheel(WindowEvent& event) {
+	float32_t y = event.originalEvent->wheel.y;
+	distance += (y * -SCROLL_FACTOR * MAX_DISTANCE);
+	distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
+	camera->setTranslation(glm::vec3(0, 0, 0));
+	camera->translateLocal(glm::vec3(0, 0, distance));
 }
 
 void handle_keyboard(const uint8_t* states) {
@@ -288,12 +302,24 @@ void handle_keyboard(const uint8_t* states) {
 	direction = glm::normalize(direction) * SPEED;
 
 	// serialize command
-	StreamBuffer stream;
+	auto stream = StreamBuffer::alloc();
 	stream << direction;
- 	auto bytes = stream.buffer();
+ 	auto bytes = stream->buffer();
 
 	// send command
-	client->send(PacketType::RELIABLE, Packet::alloc(&bytes[0], bytes.size()));
+	client->send(DeliveryType::RELIABLE, bytes);
+}
+
+void deserialize_frame(StreamBuffer::Shared stream) {
+	auto frame = Frame();
+	while (!stream->eof()) {
+		uint32_t id = 0;
+		auto transform = Transform::alloc();
+		stream >> id >> transform;
+		frame[id] = transform;
+	}
+	addFrame(frame);
+	return;
 }
 
 bool process_frame(std::time_t now, std::time_t delta) {
@@ -312,7 +338,8 @@ bool process_frame(std::time_t now, std::time_t delta) {
 	}
 
 	// handle keyboard state
-	handle_keyboard(Window::pollKeyboard());
+	auto states = Window::pollKeyboard();
+	handle_keyboard(states);
 
 	// get t value
 	float32_t frameRate = getFrameRate();
@@ -347,35 +374,6 @@ void load_viewport() {
 	viewport = Viewport::alloc(0, 0, size.x, size.y);
 	camera = Transform::alloc();
 	camera->setTranslation(glm::vec3(0, 0.0, DEFAULT_DISTANCE));
-}
-
-void handle_mouse_press(WindowEvent& event) {
-	down = true;
-}
-
-void handle_mouse_release(WindowEvent& event) {
-	down = false;
-}
-
-void handle_mouse_move(WindowEvent& event) {
-	int32_t dx = event.originalEvent->motion.xrel;
-	int32_t dy = event.originalEvent->motion.yrel;
-	if (down) {
-		float32_t xAngle = dx * X_FACTOR * (M_PI / 180.0);
-		float32_t yAngle = dy * Y_FACTOR * (M_PI / 180.0);
-		camera->setTranslation(glm::vec3(0, 0, 0));
-		camera->rotateGlobal(xAngle, glm::vec3(0, 1, 0));
-		camera->rotateLocal(yAngle, glm::vec3(1, 0, 0));
-		camera->translateLocal(glm::vec3(0, 0, distance));
-	}
-}
-
-void handle_mouse_wheel(WindowEvent& event) {
-	float32_t y = event.originalEvent->wheel.y;
-	distance += (y * -SCROLL_FACTOR * MAX_DISTANCE);
-	distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
-	camera->setTranslation(glm::vec3(0, 0, 0));
-	camera->translateLocal(glm::vec3(0, 0, distance));
 }
 
 int main(int argc, char** argv) {
@@ -431,9 +429,8 @@ int main(int argc, char** argv) {
 				break;
 			} else if (msg->type() == MessageType::DATA) {
 				// handle message
-				auto data = msg->packet()->data();
-				auto numBytes = msg->packet()->numBytes();
-				deserialize_frame(data, numBytes);
+				auto stream = msg->stream();
+				deserialize_frame(stream);
 				addFrameStamp(elapsed);
 				last = now;
 			}

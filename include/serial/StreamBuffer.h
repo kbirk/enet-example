@@ -15,6 +15,10 @@ class StreamBuffer {
 
 	public:
 
+		typedef std::shared_ptr<StreamBuffer> Shared;
+		static Shared alloc(size_t = 1024);
+		static Shared alloc(const uint8_t*, size_t);
+
 		explicit
 		StreamBuffer(size_t = 1024);
 		StreamBuffer(const uint8_t*, size_t);
@@ -24,24 +28,41 @@ class StreamBuffer {
 		void seekp(size_t);
 		size_t tellg() const;
 		size_t tellp() const;
-
+		size_t size() const;
 		bool eof() const;
 
-		StreamBuffer& operator<< (uint8_t);
-		StreamBuffer& operator<< (uint32_t);
-		StreamBuffer& operator<< (float32_t);
-		StreamBuffer& operator<< (const glm::vec3&);
-		StreamBuffer& operator<< (const glm::quat&);
+		void write(uint8_t);
+		void write(uint32_t);
+		void write(float32_t);
+		void write(const glm::vec3&);
+		void write(const glm::quat&);
 
-		StreamBuffer& operator>> (uint8_t&);
-		StreamBuffer& operator>> (uint32_t&);
-		StreamBuffer& operator>> (float32_t&);
-		StreamBuffer& operator>> (glm::vec3&);
-		StreamBuffer& operator>> (glm::quat&);
+		void read(uint8_t&);
+		void read(uint32_t&);
+		void read(float32_t&);
+		void read(glm::vec3&);
+		void read(glm::quat&);
 
 	private:
+
+		// prevent copy-construction
+		StreamBuffer(const StreamBuffer&);
+		// prevent assignment
+		StreamBuffer& operator= (const StreamBuffer&);
 
 		size_t gpos_;
 		size_t ppos_;
 		std::vector<uint8_t> buffer_;
 };
+
+template<typename T>
+StreamBuffer::Shared& operator<< (StreamBuffer::Shared& stream, const T& data) {
+	stream->write(data);
+	return stream;
+}
+
+template<typename T>
+StreamBuffer::Shared& operator>> (StreamBuffer::Shared& stream, T& data) {
+	stream->read(data);
+	return stream;
+}

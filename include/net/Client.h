@@ -1,5 +1,6 @@
 #pragma once
 
+#include "net/DeliveryType.h"
 #include "net/Message.h"
 
 #include <enet/enet.h>
@@ -8,12 +9,6 @@
 #include <map>
 #include <memory>
 #include <vector>
-
-const uint32_t CONNECTION_TIMEOUT_MS = 5000;
-const uint32_t RELIABLE_CHANNEL = 0;
-const uint32_t UNRELIABLE_CHANNEL = 1;
-const uint32_t NUM_CHANNELS = 2;
-const uint8_t SERVER_ID = 0;
 
 class Client {
 
@@ -29,7 +24,7 @@ class Client {
 		bool disconnect();
 		bool isConnected() const;
 
-		void send(PacketType, const Packet::Shared&) const;
+		void send(DeliveryType, const std::vector<uint8_t>&) const;
 		std::vector<Message::Shared> poll();
 
 	private:

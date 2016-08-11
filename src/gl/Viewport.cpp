@@ -18,13 +18,13 @@ void Viewport::resize(uint32_t nx, uint32_t ny, uint32_t nwidth, uint32_t nheigh
 	height = nheight;
 }
 
-bool operator== (const Viewport& a, const Viewport& b) {
-	return a.x == b.x &&
-		a.y == b.y &&
-		a.width == b.width &&
-		a.height == b.height;
+bool operator== (const Viewport::Shared& a, const Viewport::Shared& b) {
+	return a->x == b->x &&
+		a->y == b->y &&
+		a->width == b->width &&
+		a->height == b->height;
 }
 
-bool operator!= (const Viewport& a, const Viewport& b) {
+bool operator!= (const Viewport::Shared& a, const Viewport::Shared& b) {
 	return !(a == b);
 }

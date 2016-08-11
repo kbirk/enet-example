@@ -47,8 +47,8 @@ class Transform {
 		glm::vec3 y() const;
 		glm::vec3 z() const;
 
-		friend StreamBuffer& operator<< (StreamBuffer&, const Transform&);
-		friend StreamBuffer& operator>> (StreamBuffer&, Transform&);
+		friend StreamBuffer::Shared& operator<< (StreamBuffer::Shared&, const Transform::Shared&);
+		friend StreamBuffer::Shared& operator>> (StreamBuffer::Shared&, Transform::Shared&);
 
 	private:
 
@@ -56,6 +56,3 @@ class Transform {
 		glm::quat rotation_;
 		glm::vec3 scale_;
 };
-
-StreamBuffer& operator<< (StreamBuffer&, const Transform&);
-StreamBuffer& operator>> (StreamBuffer&, Transform&);
