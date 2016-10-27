@@ -34,7 +34,7 @@ Install Dependencies:
 ```bash
 brew install glm
 brew install sdl2
-nrew install enet
+brew install enet
 brew install libepoxy
 ```
 
