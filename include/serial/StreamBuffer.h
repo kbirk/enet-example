@@ -32,14 +32,24 @@ class StreamBuffer {
 		bool eof() const;
 
 		void write(uint8_t);
+		void write(uint16_t);
 		void write(uint32_t);
+		void write(uint64_t);
 		void write(float32_t);
+		void write(float64_t);
 		void write(const glm::vec3&);
 		void write(const glm::quat&);
 
 		void read(uint8_t&);
+		void read(int8_t&);
+		void read(uint16_t&);
+		void read(int16_t&);
 		void read(uint32_t&);
+		void read(int32_t&);
+		void read(uint64_t&);
+		void read(int64_t&);
 		void read(float32_t&);
+		void read(float64_t&);
 		void read(glm::vec3&);
 		void read(glm::quat&);
 
