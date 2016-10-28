@@ -248,15 +248,19 @@ void update_view() {
 	projection = glm::perspective(FIELD_OF_VIEW, float32_t(size.x) / float32_t(size.y), NEAR_PLANE, FAR_PLANE);
 }
 
-void handle_mouse_press(WindowEvent& event) {
-	down = true;
+void handle_mouse_press(const WindowEvent& event) {
+	if (event.originalEvent->button.button == SDL_BUTTON_LEFT) {
+		down = true;
+	}
 }
 
-void handle_mouse_release(WindowEvent& event) {
-	down = false;
+void handle_mouse_release(const WindowEvent& event) {
+	if (event.originalEvent->button.button == SDL_BUTTON_LEFT) {
+		down = false;
+	}
 }
 
-void handle_mouse_move(WindowEvent& event) {
+void handle_mouse_move(const WindowEvent& event) {
 	int32_t dx = event.originalEvent->motion.xrel;
 	int32_t dy = event.originalEvent->motion.yrel;
 	if (down) {
@@ -269,12 +273,22 @@ void handle_mouse_move(WindowEvent& event) {
 	}
 }
 
-void handle_mouse_wheel(WindowEvent& event) {
+void handle_mouse_wheel(const WindowEvent& event) {
 	float32_t y = event.originalEvent->wheel.y;
 	distance += (y * -SCROLL_FACTOR * MAX_DISTANCE);
 	distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
 	camera->setTranslation(glm::vec3(0, 0, 0));
 	camera->translateLocal(glm::vec3(0, 0, distance));
+}
+
+void handle_key_press(const WindowEvent& event) {
+	if (event.originalEvent->key.keysym.sym == SDLK_ESCAPE) {
+		quit = true;
+	}
+}
+
+void handle_close(const WindowEvent& event) {
+	quit = true;
 }
 
 void handle_keyboard(const uint8_t* states) {
@@ -333,11 +347,9 @@ bool process_frame(std::time_t now, std::time_t delta) {
 	update_view();
 
 	// handle events
-	if (Window::handleEvents()) {
-		return true;
-	}
+	Window::handleEvents();
 
-	// handle keyboard state
+	// poll keyboard state
 	auto states = Window::pollKeyboard();
 	handle_keyboard(states);
 
@@ -386,10 +398,12 @@ int main(int argc, char** argv) {
 
 	Window::setup();
 
-	Window::on(WindowEventType::MOUSE_LEFT_RELEASE, handle_mouse_release);
-	Window::on(WindowEventType::MOUSE_LEFT_PRESS, handle_mouse_press);
+	Window::on(WindowEventType::MOUSE_PRESS, handle_mouse_press);
+	Window::on(WindowEventType::MOUSE_RELEASE, handle_mouse_release);
 	Window::on(WindowEventType::MOUSE_MOVE, handle_mouse_move);
 	Window::on(WindowEventType::MOUSE_WHEEL, handle_mouse_wheel);
+	Window::on(WindowEventType::KEY_PRESS, handle_key_press);
+	Window::on(WindowEventType::CLOSE, handle_close);
 
 	load_viewport();
 	load_cube();

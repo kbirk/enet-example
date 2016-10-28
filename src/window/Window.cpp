@@ -89,8 +89,7 @@ namespace Window {
 		return glm::ivec2(w, h);
 	}
 
-	bool handleEvents() {
-		uint32_t status = 0;
+	void handleEvents() {
 		SDL_Event event;
 		while (SDL_PollEvent(&event)) {
 
@@ -121,56 +120,26 @@ namespace Window {
 					break;
 
 				case SDL_KEYUP:
-					// if escape is pressed, quit
-					if (event.key.keysym.sym == SDLK_ESCAPE) {
-						status = 1; // set status to 1 to exit main loop
-					}
 					executeCallbacks(WindowEventType::KEY_RELEASE, &event);
 					break;
 
 				case SDL_MOUSEBUTTONDOWN:
-					switch (event.button.button) {
-						case SDL_BUTTON_LEFT:
-							executeCallbacks(WindowEventType::MOUSE_LEFT_PRESS, &event);
-							break;
-
-						case SDL_BUTTON_RIGHT:
-							executeCallbacks(WindowEventType::MOUSE_RIGHT_PRESS, &event);
-							break;
-
-						case SDL_BUTTON_MIDDLE:
-							executeCallbacks(WindowEventType::MOUSE_MIDDLE_PRESS, &event);
-							break;
-					}
+					executeCallbacks(WindowEventType::MOUSE_PRESS, &event);
 					break;
 
 				case SDL_MOUSEBUTTONUP:
-					switch (event.button.button) {
-						case SDL_BUTTON_LEFT:
-							executeCallbacks(WindowEventType::MOUSE_LEFT_RELEASE, &event);
-							break;
-
-						case SDL_BUTTON_RIGHT:
-							executeCallbacks(WindowEventType::MOUSE_RIGHT_RELEASE, &event);
-							break;
-
-						case SDL_BUTTON_MIDDLE:
-							executeCallbacks(WindowEventType::MOUSE_MIDDLE_RELEASE, &event);
-							break;
-					}
+					executeCallbacks(WindowEventType::MOUSE_RELEASE, &event);
 					break;
 
 				case SDL_MOUSEWHEEL:
 					executeCallbacks(WindowEventType::MOUSE_WHEEL, &event);
 					break;
 
-
 				case SDL_MOUSEMOTION:
 					executeCallbacks(WindowEventType::MOUSE_MOVE, &event);
 					break;
 
 				case SDL_QUIT:
-					status = 1;
 					executeCallbacks(WindowEventType::CLOSE, &event);
 					break;
 
@@ -184,7 +153,6 @@ namespace Window {
 					break;
 			}
 		}
-		return (status == 1);
 	}
 
 	const uint8_t* pollKeyboard() {

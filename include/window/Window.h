@@ -21,12 +21,8 @@ enum class WindowEventType {
 	CONTROLLER_REMOVE,
 	KEY_PRESS,
 	KEY_RELEASE,
-	MOUSE_LEFT_PRESS,
-	MOUSE_LEFT_RELEASE,
-	MOUSE_MIDDLE_PRESS,
-	MOUSE_MIDDLE_RELEASE,
-	MOUSE_RIGHT_PRESS,
-	MOUSE_RIGHT_RELEASE,
+	MOUSE_PRESS,
+	MOUSE_RELEASE,
 	MOUSE_MOVE,
 	MOUSE_WHEEL,
 	RESIZE,
@@ -38,14 +34,14 @@ struct WindowEvent {
 	SDL_Event* originalEvent;
 };
 
-typedef std::function<void(WindowEvent&)> WindowEventFunc;
+typedef std::function<void(const WindowEvent&)> WindowEventFunc;
 
 namespace Window {
 	void setup();
 	void teardown();
 	glm::ivec2 size();
 	void swapBuffers();
-	bool handleEvents();
+	void handleEvents();
 	const uint8_t* pollKeyboard();
 	void on(WindowEventType, WindowEventFunc);
 }
