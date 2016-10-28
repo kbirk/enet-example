@@ -6,6 +6,18 @@
 const uint32_t MAX_CONNECTIONS = 64;
 const time_t CONNECTION_TIMEOUT_MS = 5000;
 
+std::string addressToString(const ENetAddress* address) {
+	uint8_t a = (uint8_t)(address->host);
+	uint8_t b = (uint8_t)(address->host >> 8);
+	uint8_t c = (uint8_t)(address->host >> 16);
+	uint8_t d = (uint8_t)(address->host >> 24);
+	return std::to_string(a) + "." +
+		std::to_string(b) + "." +
+		std::to_string(c) + "." +
+		std::to_string(d) + ":" +
+		std::to_string(address->port);
+}
+
 Server::Shared Server::alloc() {
 	return std::make_shared<Server>();
 }

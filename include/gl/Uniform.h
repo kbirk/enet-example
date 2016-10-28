@@ -19,9 +19,11 @@ class Uniform {
 		static Shared alloc(const std::vector<T>&);
 
 		template<typename T>
+		explicit
 		Uniform(const T&);
 
 		template<typename T>
+		explicit
 		Uniform(const std::vector<T>&);
 
 		const GLubyte* data() const;

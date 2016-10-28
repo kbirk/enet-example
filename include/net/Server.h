@@ -43,3 +43,5 @@ class Server {
 		// will make it easier to manage them by id
 		std::map<uint32_t, ENetPeer*> clients_;
 };
+
+std::string addressToString(const ENetAddress* address);

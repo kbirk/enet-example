@@ -1,7 +1,5 @@
 #pragma once
 
-#include <enet/enet.h>
-
 #include <chrono>
 #include <thread>
 
@@ -16,12 +14,19 @@ typedef double float64_t;
  */
 #include <cstdint>
 
+/**
+ * Define PI
+ */
 #ifndef M_PI
 	#define M_PI 3.14159265358979323846
 #endif
 
+/**
+ * Get timestamp in milliseconds.
+ */
 std::time_t timestamp();
 
+/**
+ * Sleep thread for N milliseconds.
+ */
 void sleepMS(uint32_t);
-
-std::string addressToString(const ENetAddress*);

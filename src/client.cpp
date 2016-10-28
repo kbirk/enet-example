@@ -113,7 +113,7 @@ std::string shader_path(const std::string& str, const std::string& type) {
 	return "resources/shaders/" + str + "." + type;
 }
 
-void load_shader() {
+void load_shaders() {
 	// flat
 	flatShader = VertexFragmentShader::alloc();
 	flatShader->create(shader_path("flat", "vert"), shader_path("flat", "frag"));
@@ -407,7 +407,7 @@ int main(int argc, char** argv) {
 
 	load_viewport();
 	load_cube();
-	load_shader();
+	load_shaders();
 	load_axes();
 
 	client = Client::alloc();
