@@ -96,6 +96,10 @@ void StreamBuffer::write(float64_t data) {
 	write(pack754_64(data));
 }
 
+void StreamBuffer::write(std::time_t data) {
+	write(uint64_t(data));
+}
+
 void StreamBuffer::write(const glm::vec3& data) {
 	write(data.x);
 	write(data.y);
@@ -187,6 +191,12 @@ void StreamBuffer::read(float64_t& data) {
 	uint64_t packed = 0;
 	read(packed);
 	data = unpack754_64(packed);
+}
+
+void StreamBuffer::read(std::time_t& data) {
+	uint64_t val = 0;
+	read(val);
+	data = val;
 }
 
 void StreamBuffer::read(glm::vec3& data) {
