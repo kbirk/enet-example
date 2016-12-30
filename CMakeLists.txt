@@ -31,6 +31,7 @@ include_directories(${SDL2_INCLUDE_DIR})
 
 # Add source files
 set(client_sources
+	"src/game/Frame"
 	"src/geometry/Cube"
 	"src/geometry/Geometry"
 	"src/geometry/Quad"
@@ -60,8 +61,8 @@ set(client_sources
 	"src/render/Technique"
 	"src/serial/Serialization"
 	"src/serial/StreamBuffer"
+	"src/time/Time"
 	"src/window/Window"
-	"src/Common"
 	"src/client")
 # Construct the executable
 add_executable(client ${client_sources})
@@ -76,13 +77,14 @@ target_link_libraries(client
 
 # Add source files
 set(server_sources
+	"src/game/Frame"
 	"src/log/Log"
 	"src/math/Transform"
 	"src/net/Server"
 	"src/net/Message"
 	"src/serial/Serialization"
 	"src/serial/StreamBuffer"
-	"src/Common"
+	"src/time/Time"
 	"src/server")
 # Construct the executable
 add_executable(server ${server_sources})

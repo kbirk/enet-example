@@ -1,11 +1,13 @@
 #include "game/Frame.h"
 
+#include "time/Time.h"
+
 Frame::Shared Frame::alloc() {
 	return std::make_shared<Frame>();
 }
 
 Frame::Frame()
-	: timestamp_(timestamp()) {
+	: timestamp_(Time::timestamp()) {
 }
 
 void Frame::addPlayer(uint32_t id, Transform::Shared player) {

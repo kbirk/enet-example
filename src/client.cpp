@@ -1,4 +1,6 @@
 #include "Common.h"
+#include "game/Common.h"
+#include "game/Frame.h"
 #include "geometry/Cube.h"
 #include "gl/GLCommon.h"
 #include "gl/ElementArrayBufferObject.h"
@@ -16,6 +18,7 @@
 #include "render/RenderCommand.h"
 #include "render/Renderer.h"
 #include "serial/StreamBuffer.h"
+#include "time/Time.h"
 #include "window/Window.h"
 
 #include <glm/glm.hpp>
@@ -26,12 +29,11 @@
 #include <iostream>
 #include <string>
 #include <thread>
-
-typedef std::map<uint32_t, Transform::Shared> Frame;
+#include <deque>
 
 const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
-const time_t DISCONNECT_TIMEOUT = 5000;
+const std::time_t DISCONNECT_TIMEOUT = Time::seconds(5);
 
 const float32_t DEFAULT_DISTANCE = 10.0f;
 const float32_t SCROLL_FACTOR = 0.005f;
@@ -60,53 +62,11 @@ glm::mat4 projection;
 Client::Shared client;
 Transform::Shared camera;
 
-std::vector<Frame> frames;
-const uint32_t NUM_BUFFERED_FRAMES = 3;
+std::deque<Frame::Shared> frames;
 
-std::vector<time_t> frameStamps;
-
-void addFrame(const Frame& node) {
-	while (frames.size() > NUM_BUFFERED_FRAMES) {
-		frames.erase(frames.begin());
-	}
-	frames.push_back(node);
-}
-
-void addFrameStamp(time_t time) {
-	while (frameStamps.size() > 20) {
-		frameStamps.erase(frameStamps.begin());
-	}
-	frameStamps.push_back(time);
-}
-
-float32_t getFrameRate() {
-	float32_t sum = 0;
-	for (auto stamp : frameStamps) {
-		sum += stamp;
-	}
-	return sum / float32_t(frameStamps.size());
-}
-
-Frame interpolateFrames(const Frame& a, const Frame& b, float32_t t) {
-	auto frame = Frame();
-	for (auto iter : a) {
-		auto id = iter.first;
-		auto ta = iter.second;
-		// check that another frame exists for it.
-		auto match = b.find(id);
-		if (match == b.end()) {
-			continue;
-		}
-		auto tb = match->second;
-		// interpolate between frames
-		auto transform = Transform::alloc();
-		transform->setTranslation(glm::lerp(ta->translation(), tb->translation(), t));
-		transform->setRotation(glm::slerp(ta->rotation(), tb->rotation(), t));
-		transform->setScale(glm::lerp(ta->scale(), tb->scale(), t));
-		// add to frame
-		frame[id] = transform;
-	}
-	return frame;
+void add_frame(Frame::Shared frame) {
+	// prepend
+	frames.push_front(frame);
 }
 
 std::string shader_path(const std::string& str, const std::string& type) {
@@ -229,7 +189,7 @@ void signal_handler(int32_t signal) {
 
 void handle_disconnect() {
 	// sleep
-	sleepMS(DISCONNECT_TIMEOUT);
+	Time::sleep(DISCONNECT_TIMEOUT);
 	// attempt to reconnect
 	while (!quit) {
 		LOG_DEBUG("Attempting to re-connect to server...");
@@ -325,23 +285,105 @@ void handle_keyboard(const uint8_t* states) {
 }
 
 void deserialize_frame(StreamBuffer::Shared stream) {
-	auto frame = Frame();
-	while (!stream->eof()) {
-		uint32_t id = 0;
-		auto transform = Transform::alloc();
-		stream >> id >> transform;
-		frame[id] = transform;
-	}
-	addFrame(frame);
+	auto frame = Frame::alloc();
+	stream >> frame;
+	add_frame(frame);
 	return;
 }
 
-bool process_frame(std::time_t now, std::time_t delta) {
+std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) {
+	//
+	//  find closest frames on either side of the delayed time such that:
+	//
+	//      frame0->timestamp() < (now - delay) < frame0->timestamp()
+	//
+	//              interpolation window
+	//                      |
+	//                      V
+	//                 -----------
+	//                 |         |
+	//  - - - - - - - - - - - - - - - - - - - - - - - - -
+	//  |       |       |   x   |       |   x   |       |
+	//
+	//  0       1       2       3       4       5       6    <- frames
+	//                 |         |
+	//                 -----------
+	//                      ^               ^
+	//                      |               |
+	//                   delayed          actual
+	//                    time             time
+	//                      -----------------
+	//                              ^
+	//                              |
+	//                     interpolation delay
 
-	// don't process until we've buffered enough frames
-	if (frames.size() < NUM_BUFFERED_FRAMES) {
-		return false;
+	// we need at least 2 frames
+	if (frames.size() < 2) {
+		return std::make_tuple(nullptr, nullptr, 0);
 	}
+
+	// delay timestamp for interpolation "window"
+	auto delayed = now - Game::INTERPOLATION_DELAY;
+
+	// find closest frames on each side of the current time
+
+	// BEST CASE: we have no loss / delay and a window of one frame size
+	// AVERAGE CASE: we have a bit of loss / delay and a larger window
+	// WORST CASE: there are none "ahead" and we are working with stale data
+
+	// find the closest frame to interpolate from
+	// BASE CASE: it's the oldest frame in the buffer
+	int32_t fromIndex = frames.size() - 1;
+	for (auto i = 0; i < frames.size(); i++) {
+		auto frame = frames[i];
+		if (delayed - frame->timestamp() > 0) {
+			fromIndex = i;
+			break;
+		}
+	}
+
+	// find the closest frame to interpolate to
+	// BASE CASE: it's the newest frame in the buffer
+	int32_t toIndex = 0;
+	for (auto i = int32_t(frames.size()) - 1; i >= 0; i--) {
+		auto frame = frames[i];
+		if ((delayed - frame->timestamp()) <= 0) {
+			toIndex = i;
+			break;
+		}
+	}
+
+	// cases where window is outside of the interpolation buffer
+	if (toIndex == fromIndex) {
+		if (toIndex == 0 && fromIndex == 0) {
+			// we only have stale data
+			LOG_INFO("stale data... worst case, " << toIndex << ", num frames: " << frames.size());
+			return std::make_tuple(frames[0], frames[0], 1);
+		}
+		if (toIndex == frames.size() - 1 && fromIndex == frames.size() - 1) {
+			// not enough time has passed, not ready to interpolate
+			return std::make_tuple(nullptr, nullptr, 0);
+		}
+	}
+
+	// remove any frames that have expired
+	if (frames.size() != fromIndex+1) {
+		frames.erase(frames.begin() + (fromIndex+1), frames.end());
+	}
+
+	// calculate t value based on what frames are used
+	auto from = frames[fromIndex];
+	auto to = frames[toIndex];
+
+	// calc t value
+	float32_t t = float32_t(delayed - from->timestamp()) / float32_t(to->timestamp() - from->timestamp());
+
+	// LOG_INFO("From " << from->timestamp() << " to " << to->timestamp() << ", delayed: " << delayed << ", t: " << t);
+
+	return std::make_tuple(from, to, t);
+}
+
+void process_frame(std::time_t now) {
 
 	// update viewport and projection
 	update_view();
@@ -353,12 +395,17 @@ bool process_frame(std::time_t now, std::time_t delta) {
 	auto states = Window::pollKeyboard();
 	handle_keyboard(states);
 
-	// get t value
-	float32_t frameRate = getFrameRate();
-	float32_t t = std::min(1.0f, float32_t(delta) / frameRate);
+	Frame::Shared a, b;
+	float32_t t;
+
+	std::tie(a, b, t) = get_frames(now);
+
+	if (!a || !b) {
+		return;
+	}
 
 	// interpolate frame
-	auto frame = interpolateFrames(frames[0], frames[1], t);
+	auto frame = interpolate(a, b, t);
 
 	// clear buffers
 	glClearColor(0.137f, 0.137f, 0.137f, 1.0f);
@@ -369,16 +416,14 @@ bool process_frame(std::time_t now, std::time_t delta) {
 	// draw origin
 	Renderer::render(render_axes());
 
-	// draw transforms
-	for (auto iter : frame) {
-		auto transform = iter.second;
-		Renderer::render(render_phong(cube, transform->matrix()));
+	// draw players
+	for (auto iter : frame->players()) {
+		auto player = iter.second;
+		Renderer::render(render_phong(cube, player->matrix()));
 	}
 
 	// swap back buffer
 	Window::swapBuffers();
-
-	return false;
 }
 
 void load_viewport() {
@@ -416,18 +461,12 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	std::time_t last = timestamp();
-
 	while (true) {
 
-		std::time_t now = timestamp();
-		std::time_t elapsed = now - last;
+		std::time_t now = Time::timestamp();
 
 		// process the frame
-		if (process_frame(now, elapsed)) {
-			// exit
-			break;
-		}
+		process_frame(now);
 
 		// poll for events
 		auto messages = client->poll();
@@ -437,16 +476,12 @@ int main(int argc, char** argv) {
 			if (msg->type() == MessageType::DISCONNECT) {
 				// handle the disconnect
 				handle_disconnect();
-				now = timestamp();
-				last = now;
 				// ignore other messages
 				break;
 			} else if (msg->type() == MessageType::DATA) {
 				// handle message
 				auto stream = msg->stream();
 				deserialize_frame(stream);
-				addFrameStamp(elapsed);
-				last = now;
 			}
 		}
 

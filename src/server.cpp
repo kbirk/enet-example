@@ -1,10 +1,13 @@
 #include "Common.h"
+#include "game/Common.h"
+#include "game/Frame.h"
 #include "log/Log.h"
 #include "math/Transform.h"
 #include "net/DeliveryType.h"
 #include "net/Message.h"
 #include "net/Server.h"
 #include "serial/StreamBuffer.h"
+#include "time/Time.h"
 
 #include "glm/glm.hpp"
 
@@ -15,44 +18,35 @@
 #include <thread>
 
 const uint32_t PORT = 7000;
-const time_t STEP_MS = 100;
-const time_t STEPS_PER_SEC = 1000 / STEP_MS;
 
 bool quit = false;
 
 Server::Shared server;
-std::map<uint32_t, Transform::Shared> frame;
+Frame::Shared frame;
 
 void signal_handler(int32_t signal) {
 	LOG_DEBUG("Caught signal: " << signal << ", shutting down...");
 	quit = true;
 }
 
-std::vector<uint8_t> serialize_frame() {
-	if (frame.empty()) {
-		return std::vector<uint8_t>();
-	}
+std::vector<uint8_t> serialize_frame(const Frame::Shared& frame) {
 	auto stream = StreamBuffer::alloc();
-	for (auto iter : frame) {
-		auto id = iter.first;
-		auto transform = iter.second;
-		stream << id << transform;
-	}
+	stream << frame;
 	return stream->buffer();
 }
 
-void process_frame(std::time_t stamp, std::time_t delta) {
+void process_frame(const Frame::Shared& frame, std::time_t now) {
 	float32_t pi2 = 2.0 * M_PI;
-	float32_t angle = std::fmod(((float64_t(stamp) / 2000.0) * pi2), pi2);
-	// LOG_DEBUG("Setting angle to: " << angle << " radians for time of: " << stamp);
+	float32_t angle = std::fmod(((float64_t(now) / 2000000.0) * pi2), pi2);
+	// LOG_DEBUG("Setting angle to: " << angle << " radians for time of: " << now);
 	auto axis = glm::vec3(1, 1, 1);
-	for (auto iter : frame) {
+	for (auto iter : frame->players()) {
 		auto id = iter.first;
-		auto transform = iter.second;
+		auto player = iter.second;
 		if (id > server->numClients()) {
 			// rotate and translate non-clients
-			transform->setRotation(angle, axis);
-			transform->setTranslation(glm::vec3(std::sin(angle) * 3.0, 0.0, 0.0));
+			player->setRotation(angle, axis);
+			player->setTranslation(glm::vec3(std::sin(angle) * 3.0, 0.0, 0.0));
 		}
 	}
 }
@@ -72,22 +66,22 @@ int main(int argc, char** argv) {
 	std::signal(SIGQUIT, signal_handler);
 	std::signal(SIGTERM, signal_handler);
 
+	frame = Frame::alloc();
+	// TEMP: high enough ID not to conflict with a client id
+	frame->addPlayer(256, Transform::alloc());
+
 	server = Server::alloc();
-
-	uint32_t ARBITRARY_ID = 256; // high enough not to conflict with a client id
-	frame[ARBITRARY_ID] = Transform::alloc();
-
 	if (server->start(PORT)) {
 		return 1;
 	}
 
-	std::time_t last = timestamp();
+	std::time_t last = Time::timestamp();
 
 	auto frameCount = 0;
 
 	while (true) {
 
-		std::time_t stamp = timestamp();
+		std::time_t now = Time::timestamp();
 
 		// poll for events
 		auto messages = server->poll();
@@ -97,14 +91,14 @@ int main(int argc, char** argv) {
 			if (msg->type() == MessageType::CONNECT) {
 
 				LOG_DEBUG("Connection from client_" << msg->id() << " received");
-				frame[msg->id()] = Transform::alloc();
+				frame->addPlayer(msg->id(), Transform::alloc());
 				// inform client what it's ID is
 				// send_client_info(msg->id());
 
 			} else if (msg->type() == MessageType::DISCONNECT) {
 
 				LOG_DEBUG("Connection from client_" << msg->id() << " lost");
-				frame.erase(msg->id());
+				frame->removePlayer(msg->id());
 
 			} else if (msg->type() == MessageType::DATA) {
 
@@ -112,36 +106,39 @@ int main(int argc, char** argv) {
 				auto stream = msg->stream();
 				glm::vec3 direction;
 				stream >> direction;
-				frame[msg->id()]->translateGlobal(direction);
+				auto players = frame->players();
+				players[msg->id()]->translateGlobal(direction);
 
 			}
 		}
 
 		// process the frame
-		process_frame(stamp, stamp - last);
+		process_frame(frame, now);
 
-		// broadcast to all clients
-		auto bytes = serialize_frame();
-		server->broadcast(DeliveryType::RELIABLE, bytes);
+		// update frame timestmap
+		frame->setTimestamp(now);
+
+		// broadcast frame to all clients
+		server->broadcast(DeliveryType::RELIABLE, serialize_frame(frame));
 
 		// check if exit
 		if (quit) {
 			break;
 		}
 
-		// determine elapsed time to calc sleep for next frame
-		std::time_t now = timestamp();
-		std::time_t elapsed = now - stamp;
+		// determine elapsed frame time to calc sleep for next frame
+		std::time_t elapsed = Time::timestamp() - now;
 
-		// sleep
-		if (elapsed < STEP_MS) {
-			sleepMS(STEP_MS - elapsed);
+		// sleep until next frame step
+		if (elapsed < Game::STEP_DURATION) {
+			Time::sleep(Game::STEP_DURATION - elapsed);
 		}
 
 		// debug
-		if (frameCount % STEPS_PER_SEC == 0) {
-			LOG_INFO("Tick of " << (now - last) << "ms processed in " << elapsed << "ms");
+		if (frameCount % Game::STEPS_PER_SEC == 0) {
+			LOG_INFO("Tick of " << Time::format(now - last) << " processed in " << Time::format(elapsed));
 		}
+
 		last = now;
 		frameCount++;
 	}

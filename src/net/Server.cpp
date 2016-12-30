@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "log/Log.h"
+#include "time/Time.h"
 
 const uint32_t MAX_CONNECTIONS = 64;
 const time_t CONNECTION_TIMEOUT_MS = 5000;
@@ -73,7 +74,7 @@ bool Server::stop() {
 		enet_peer_disconnect(client, 0);
 	}
 	// wait for the disconnections to be acknowledged
-	auto stamp = timestamp();
+	auto timestamp = Time::timestamp();
 	bool success = false;
 	ENetEvent event;
 	while (true) {
@@ -117,7 +118,7 @@ bool Server::stop() {
 			}
 		}
 		// check timeout
-		if (timestamp() - stamp > CONNECTION_TIMEOUT_MS) {
+		if (Time::timestamp() - timestamp > Time::milliseconds(CONNECTION_TIMEOUT_MS)) {
 			LOG_ERROR("Disconnection was not acknowledged by server, shutdown forced");
 			break;
 		}

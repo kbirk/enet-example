@@ -2,9 +2,10 @@
 
 #include "Common.h"
 #include "log/Log.h"
+#include "time/Time.h"
 
 const uint8_t SERVER_ID = 0;
-const time_t CONNECTION_TIMEOUT_MS = 5000;
+const std::time_t CONNECTION_TIMEOUT_MS = 5000;
 
 Client::Shared Client::alloc() {
 	return std::make_shared<Client>();
@@ -85,7 +86,7 @@ bool Client::disconnect() {
 	enet_peer_disconnect(server_, 0);
 	// wait for the disconnect to be acknowledged
 	ENetEvent event;
-	auto stamp = timestamp();
+	auto timestamp = Time::timestamp();
 	bool success = false;
 	while (true) {
 		int32_t res = enet_host_service(host_, &event, 0);
@@ -106,7 +107,7 @@ bool Client::disconnect() {
 			break;
 		}
 		// check for timeout
-		if (timestamp() - stamp > CONNECTION_TIMEOUT_MS) {
+		if (Time::timestamp() - timestamp > Time::milliseconds(CONNECTION_TIMEOUT_MS)) {
 			break;
 		}
 	}
