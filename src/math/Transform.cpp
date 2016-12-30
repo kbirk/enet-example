@@ -165,3 +165,11 @@ StreamBuffer::Shared& operator>> (StreamBuffer::Shared& stream, Transform::Share
 		>> transform->scale_;
 	return stream;
 }
+
+Transform::Shared interpolate(const Transform::Shared& a, const Transform::Shared& b, float32_t t) {
+	auto transform = Transform::alloc();
+	transform->setTranslation(glm::lerp(a->translation(), b->translation(), t));
+	transform->setRotation(glm::slerp(a->rotation(), b->rotation(), t));
+	transform->setScale(glm::lerp(a->scale(), b->scale(), t));
+	return transform;
+}

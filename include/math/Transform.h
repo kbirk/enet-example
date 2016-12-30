@@ -56,3 +56,5 @@ class Transform {
 		glm::quat rotation_;
 		glm::vec3 scale_;
 };
+
+Transform::Shared interpolate(const Transform::Shared&, const Transform::Shared&, float32_t);
