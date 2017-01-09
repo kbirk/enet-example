@@ -5,7 +5,7 @@
 #include "time/Time.h"
 
 const uint32_t MAX_CONNECTIONS = 64;
-const time_t CONNECTION_TIMEOUT_MS = 5000;
+const std::time_t CONNECTION_TIMEOUT_MS = 5000;
 
 std::string addressToString(const ENetAddress* address) {
 	uint8_t a = (uint8_t)(address->host);

@@ -17,9 +17,9 @@
 #include "net/Message.h"
 #include "render/RenderCommand.h"
 #include "render/Renderer.h"
+#include "sdl/SDL2Window.h"
 #include "serial/StreamBuffer.h"
 #include "time/Time.h"
-#include "window/Window.h"
 
 #include <glm/glm.hpp>
 #include <glm/ext.hpp>
@@ -36,7 +36,7 @@ const uint32_t PORT = 7000;
 const std::time_t DISCONNECT_TIMEOUT = Time::seconds(5);
 
 const float32_t DEFAULT_DISTANCE = 10.0f;
-const float32_t SCROLL_FACTOR = 0.005f;
+const float32_t SCROLL_FACTOR = 0.5f;
 const float32_t MAX_DISTANCE = DEFAULT_DISTANCE * 10.0;
 const float32_t MIN_DISTANCE = 0.0;
 const float32_t X_FACTOR = -0.1;
@@ -51,6 +51,10 @@ float32_t distance = DEFAULT_DISTANCE;
 
 bool quit = false;
 
+Window::Shared window;
+Keyboard::Shared keyboard;
+Mouse::Shared mouse;
+
 VertexFragmentShader::Shared flatShader;
 VertexFragmentShader::Shared phongShader;
 VertexArrayObject::Shared cube;
@@ -58,7 +62,9 @@ VertexArrayObject::Shared x;
 VertexArrayObject::Shared y;
 VertexArrayObject::Shared z;
 Viewport::Shared viewport;
+
 glm::mat4 projection;
+
 Client::Shared client;
 Transform::Shared camera;
 
@@ -201,87 +207,11 @@ void handle_disconnect() {
 }
 
 void update_view() {
-	auto size = Window::size();
+	auto size = window->size();
 	// update viewport size
 	viewport->resize(0, 0, size.x, size.y);
 	// update projection
 	projection = glm::perspective(FIELD_OF_VIEW, float32_t(size.x) / float32_t(size.y), NEAR_PLANE, FAR_PLANE);
-}
-
-void handle_mouse_press(const WindowEvent& event) {
-	if (event.originalEvent->button.button == SDL_BUTTON_LEFT) {
-		down = true;
-	}
-}
-
-void handle_mouse_release(const WindowEvent& event) {
-	if (event.originalEvent->button.button == SDL_BUTTON_LEFT) {
-		down = false;
-	}
-}
-
-void handle_mouse_move(const WindowEvent& event) {
-	int32_t dx = event.originalEvent->motion.xrel;
-	int32_t dy = event.originalEvent->motion.yrel;
-	if (down) {
-		float32_t xAngle = dx * X_FACTOR * (M_PI / 180.0);
-		float32_t yAngle = dy * Y_FACTOR * (M_PI / 180.0);
-		camera->setTranslation(glm::vec3(0, 0, 0));
-		camera->rotateGlobal(xAngle, glm::vec3(0, 1, 0));
-		camera->rotateLocal(yAngle, glm::vec3(1, 0, 0));
-		camera->translateLocal(glm::vec3(0, 0, distance));
-	}
-}
-
-void handle_mouse_wheel(const WindowEvent& event) {
-	float32_t y = event.originalEvent->wheel.y;
-	distance += (y * -SCROLL_FACTOR * MAX_DISTANCE);
-	distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
-	camera->setTranslation(glm::vec3(0, 0, 0));
-	camera->translateLocal(glm::vec3(0, 0, distance));
-}
-
-void handle_key_press(const WindowEvent& event) {
-	if (event.originalEvent->key.keysym.sym == SDLK_ESCAPE) {
-		quit = true;
-	}
-}
-
-void handle_close(const WindowEvent& event) {
-	quit = true;
-}
-
-void handle_keyboard(const uint8_t* states) {
-
-	float32_t SPEED = 0.1;
-	glm::vec3 direction(0, 0, 0);
-
-	if (states[SDL_SCANCODE_W]) {
-		direction += glm::vec3(0, 0, -1);
-	}
-	if (states[SDL_SCANCODE_A]) {
-		direction += glm::vec3(-1, 0, 0);
-	}
-	if (states[SDL_SCANCODE_S]) {
-		direction += glm::vec3(0, 0, 1);
-	}
-	if (states[SDL_SCANCODE_D]) {
-		direction += glm::vec3(1, 0, 0);
-	}
-
-	if (glm::length(direction) == 0) {
-		return;
-	}
-
-	direction = glm::normalize(direction) * SPEED;
-
-	// serialize command
-	auto stream = StreamBuffer::alloc();
-	stream << direction;
- 	auto bytes = stream->buffer();
-
-	// send command
-	client->send(DeliveryType::RELIABLE, bytes);
 }
 
 void deserialize_frame(StreamBuffer::Shared stream) {
@@ -322,6 +252,9 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 		return std::make_tuple(nullptr, nullptr, 0);
 	}
 
+	// get last frame index
+	int32_t lastFrameIndex = int32_t(frames.size()) - 1;
+
 	// delay timestamp for interpolation "window"
 	auto delayed = now - Game::INTERPOLATION_DELAY;
 
@@ -334,7 +267,7 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 	// find the closest frame to interpolate from
 	// BASE CASE: it's the oldest frame in the buffer
 	int32_t fromIndex = frames.size() - 1;
-	for (auto i = 0; i < frames.size(); i++) {
+	for (uint32_t i = 0; i < frames.size(); i++) {
 		auto frame = frames[i];
 		if (delayed - frame->timestamp() > 0) {
 			fromIndex = i;
@@ -345,7 +278,7 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 	// find the closest frame to interpolate to
 	// BASE CASE: it's the newest frame in the buffer
 	int32_t toIndex = 0;
-	for (auto i = int32_t(frames.size()) - 1; i >= 0; i--) {
+	for (int32_t i = lastFrameIndex; i >= 0; i--) {
 		auto frame = frames[i];
 		if ((delayed - frame->timestamp()) <= 0) {
 			toIndex = i;
@@ -360,14 +293,14 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 			LOG_INFO("stale data... worst case, " << toIndex << ", num frames: " << frames.size());
 			return std::make_tuple(frames[0], frames[0], 1);
 		}
-		if (toIndex == frames.size() - 1 && fromIndex == frames.size() - 1) {
+		if (toIndex == lastFrameIndex && fromIndex == lastFrameIndex) {
 			// not enough time has passed, not ready to interpolate
 			return std::make_tuple(nullptr, nullptr, 0);
 		}
 	}
 
 	// remove any frames that have expired
-	if (frames.size() != fromIndex+1) {
+	if (int32_t(frames.size()) != fromIndex+1) {
 		frames.erase(frames.begin() + (fromIndex+1), frames.end());
 	}
 
@@ -383,23 +316,33 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 	return std::make_tuple(from, to, t);
 }
 
+std::vector<Input::Shared> poll_input() {
+	auto keyboardInput = keyboard->poll();
+	auto mouseInput = mouse->poll();
+	std::vector<Input::Shared> input;
+	input.insert(input.end(), keyboardInput.begin(), keyboardInput.end());
+	input.insert(input.end(), mouseInput.begin(), mouseInput.end());
+	return input;
+}
+
 void process_frame(std::time_t now) {
 
 	// update viewport and projection
 	update_view();
 
-	// handle events
-	Window::handleEvents();
+	// process events
+	window->processEvents();
 
 	// poll keyboard state
-	auto states = Window::pollKeyboard();
-	handle_keyboard(states);
+	// auto states = Window::pollKeyboard();
+	// handle_keyboard(states);
 
+	// get frames to interpolate between
 	Frame::Shared a, b;
 	float32_t t;
-
 	std::tie(a, b, t) = get_frames(now);
 
+	// no frames to interpolate
 	if (!a || !b) {
 		return;
 	}
@@ -423,34 +366,70 @@ void process_frame(std::time_t now) {
 	}
 
 	// swap back buffer
-	Window::swapBuffers();
+	window->swapBuffers();
 }
 
 void load_viewport() {
-	auto size = Window::size();
+	auto size = window->size();
 	viewport = Viewport::alloc(0, 0, size.x, size.y);
+}
+
+void load_camera() {
 	camera = Transform::alloc();
 	camera->setTranslation(glm::vec3(0, 0.0, DEFAULT_DISTANCE));
+}
+
+Input::Shared rotate_camera(
+	const MouseMoveEvent& event,
+	const std::map<Button, ButtonState>& mouseState,
+	const std::map<Key, KeyState>& keyboardState) {
+	// rotate with mouse button
+	auto button = get(mouseState, Button::LEFT);
+	if (button == ButtonState::DOWN) {
+		float32_t xAngle = event.delta.x * X_FACTOR * (M_PI / 180.0);
+		float32_t yAngle = event.delta.y * Y_FACTOR * (M_PI / 180.0);
+		camera->setTranslation(glm::vec3(0, 0, 0));
+		camera->rotateGlobal(xAngle, glm::vec3(0, 1, 0));
+		camera->rotateLocal(yAngle, glm::vec3(1, 0, 0));
+		camera->translateLocal(glm::vec3(0, 0, distance));
+	}
+	return nullptr;
+}
+
+Input::Shared zoom_camera(
+	const MouseScrollEvent& event,
+	const std::map<Button, ButtonState>& mouseState,
+	const std::map<Key, KeyState>& keyboardState) {
+	// translate camera
+	float32_t delta = (event.delta * -SCROLL_FACTOR);
+	distance += delta;
+	distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
+	camera->setTranslation(glm::vec3(0, 0, 0));
+	camera->translateLocal(glm::vec3(0, 0, distance));
+	return nullptr;
 }
 
 int main(int argc, char** argv) {
 
 	std::srand(std::time(0));
 
+	// TODO: put this in window class?
 	std::signal(SIGINT, signal_handler);
 	std::signal(SIGQUIT, signal_handler);
 	std::signal(SIGTERM, signal_handler);
 
-	Window::setup();
+	window = SDL2Window::alloc("ENet Example", 768, 512);
+	mouse = window->mouse();
+	mouse->add(rotate_camera);
+	mouse->add(zoom_camera);
 
-	Window::on(WindowEventType::MOUSE_PRESS, handle_mouse_press);
-	Window::on(WindowEventType::MOUSE_RELEASE, handle_mouse_release);
-	Window::on(WindowEventType::MOUSE_MOVE, handle_mouse_move);
-	Window::on(WindowEventType::MOUSE_WHEEL, handle_mouse_wheel);
-	Window::on(WindowEventType::KEY_PRESS, handle_key_press);
-	Window::on(WindowEventType::CLOSE, handle_close);
+	keyboard = window->keyboard();
+	// keyboard->add(movementHandler);
+	// keyboard->add(jumpHandler);
+	// keyboard->add(attackHandler);
 
 	load_viewport();
+	load_camera();
 	load_cube();
 	load_shaders();
 	load_axes();
@@ -461,17 +440,17 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	while (true) {
+	while (!window->shouldClose() && !quit) {
 
 		std::time_t now = Time::timestamp();
 
 		// process the frame
 		process_frame(now);
 
-		// poll for events
+		// poll for messages
 		auto messages = client->poll();
 
-		// process events
+		// process messages
 		for (auto msg : messages) {
 			if (msg->type() == MessageType::DISCONNECT) {
 				// handle the disconnect
@@ -493,6 +472,4 @@ int main(int argc, char** argv) {
 
 	// attempt to disconnect gracefully
 	client->disconnect();
-
-	Window::teardown();
 }

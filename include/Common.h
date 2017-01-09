@@ -19,3 +19,13 @@ typedef double float64_t;
 #ifndef M_PI
 	#define M_PI 3.14159265358979323846
 #endif
+
+/**
+ * Utility lookup for const map types.
+ */
+template <typename T>
+typename T::mapped_type get(T const& map, typename T::key_type const& key)
+{
+	typename T::const_iterator iter(map.find(key));
+	return iter != map.end() ? iter->second : typename T::mapped_type();
+}

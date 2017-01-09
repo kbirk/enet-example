@@ -44,7 +44,7 @@ StreamBuffer::Shared& operator>> (StreamBuffer::Shared& stream, Frame::Shared& f
 	stream >> frame->timestamp_; // timestamp
 	uint32_t size = 0;
 	stream >> size; // player count
-	for (auto i = 0; i < size; i++) {
+	for (uint32_t i = 0; i < size; i++) {
 		uint32_t id;
 		stream >> id; // id
 		auto player = Transform::alloc();
