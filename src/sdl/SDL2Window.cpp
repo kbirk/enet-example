@@ -138,3 +138,12 @@ Keyboard::Shared SDL2Window::keyboard() const {
 Mouse::Shared SDL2Window::mouse() const {
 	return mouse_;
 }
+
+std::vector<Input::Shared> SDL2Window::poll() const {
+	auto keyboardInput = keyboard_->poll();
+	auto mouseInput = mouse_->poll();
+	std::vector<Input::Shared> input;
+	input.insert(input.end(), keyboardInput.begin(), keyboardInput.end());
+	input.insert(input.end(), mouseInput.begin(), mouseInput.end());
+	return input;
+}

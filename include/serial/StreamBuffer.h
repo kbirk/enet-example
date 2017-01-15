@@ -38,6 +38,7 @@ class StreamBuffer {
 		void write(float32_t);
 		void write(float64_t);
 		void write(std::time_t);
+		void write(std::string);
 		void write(const glm::vec3&);
 		void write(const glm::quat&);
 
@@ -51,7 +52,8 @@ class StreamBuffer {
 		void read(int64_t&);
 		void read(float32_t&);
 		void read(float64_t&);
-		void read(std::time_t&);
+		void read(std::string&);
+		//void read(std::time_t&);
 		void read(glm::vec3&);
 		void read(glm::quat&);
 

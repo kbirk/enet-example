@@ -10,7 +10,7 @@ Frame::Frame()
 	: timestamp_(Time::timestamp()) {
 }
 
-void Frame::addPlayer(uint32_t id, Transform::Shared player) {
+void Frame::addPlayer(uint32_t id, Player::Shared player) {
 	players_[id] = player;
 }
 
@@ -18,7 +18,7 @@ void Frame::removePlayer(uint32_t id) {
 	players_.erase(id);
 }
 
-const std::map<uint32_t, Transform::Shared>& Frame::players() const {
+const std::map<uint32_t, Player::Shared>& Frame::players() const {
 	return players_;
 }
 
@@ -47,7 +47,7 @@ StreamBuffer::Shared& operator>> (StreamBuffer::Shared& stream, Frame::Shared& f
 	for (uint32_t i = 0; i < size; i++) {
 		uint32_t id;
 		stream >> id; // id
-		auto player = Transform::alloc();
+		auto player = Player::alloc();
 		stream >> player; // player
 		frame->players_[id] = player;
 	}

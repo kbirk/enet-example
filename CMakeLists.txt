@@ -21,6 +21,7 @@ set(CMAKE_CXX_FLAGS "-Wall -Werror -pedantic -Wfatal-errors -O2 ${CMAKE_CXX_FLAG
 
 # Dependencies and include locations
 include_directories("include")
+include_directories("external/include")
 include_directories(${ENET_INCLUDE_DIRS})
 include_directories(${EPOXY_INCLUDE_DIRS})
 include_directories(${GLM_INCLUDE_DIR})
@@ -32,6 +33,12 @@ include_directories(${SDL2_INCLUDE_DIR})
 # Add source files
 set(client_sources
 	"src/game/Frame"
+	"src/game/Idle"
+	"src/game/MoveDirection"
+	"src/game/Player"
+	"src/game/State"
+	"src/game/StateMachine"
+	"src/game/StateType"
 	"src/geometry/Cube"
 	"src/geometry/Geometry"
 	"src/geometry/Quad"
@@ -49,6 +56,12 @@ set(client_sources
 	"src/gl/UniformDescriptor"
 	"src/gl/UniformBlockDescriptor"
 	"src/gl/Viewport"
+	"src/input/Input"
+	"src/input/Keyboard"
+	"src/input/KeyboardEvent"
+	"src/input/Mouse"
+	"src/input/MouseEvent"
+	"src/input/Window"
 	"src/log/Log"
 	"src/math/Transform"
 	"src/net/Client"
@@ -59,10 +72,12 @@ set(client_sources
 	"src/render/RenderCommand"
 	"src/render/Renderer"
 	"src/render/Technique"
+	"src/sdl/SDL2Keyboard"
+	"src/sdl/SDL2Mouse"
+	"src/sdl/SDL2Window"
 	"src/serial/Serialization"
 	"src/serial/StreamBuffer"
 	"src/time/Time"
-	"src/window/Window"
 	"src/client")
 # Construct the executable
 add_executable(client ${client_sources})
@@ -78,6 +93,13 @@ target_link_libraries(client
 # Add source files
 set(server_sources
 	"src/game/Frame"
+	"src/game/Idle"
+	"src/game/MoveDirection"
+	"src/game/Player"
+	"src/game/State"
+	"src/game/StateMachine"
+	"src/game/StateType"
+	"src/input/Input"
 	"src/log/Log"
 	"src/math/Transform"
 	"src/net/Server"

@@ -96,6 +96,15 @@ void StreamBuffer::write(float64_t data) {
 	write(pack754_64(data));
 }
 
+void StreamBuffer::write(std::string data) {
+	auto len = data.size();
+	write(uint32_t(len));
+	const char* bytes = data.c_str();
+	for (uint32_t i = 0; i<len; i++) {
+		write(uint8_t(bytes[i]));
+	}
+}
+
 void StreamBuffer::write(std::time_t data) {
 	write(uint64_t(data));
 }
@@ -193,10 +202,20 @@ void StreamBuffer::read(float64_t& data) {
 	data = unpack754_64(packed);
 }
 
-void StreamBuffer::read(std::time_t& data) {
-	uint64_t val = 0;
-	read(val);
-	data = val;
+// void StreamBuffer::read(std::time_t& data) {
+// 	uint64_t val = 0;
+// 	read(val);
+// 	data = val;
+// }
+
+void StreamBuffer::read(std::string& data) {
+	uint32_t len = 0;
+	read(len);
+	char* bytes = new char[len];
+	for (uint32_t i = 0; i<len; i++) {
+		read((uint8_t&)bytes[i]);
+	}
+	data.replace(0, len, std::string(bytes, len));
 }
 
 void StreamBuffer::read(glm::vec3& data) {

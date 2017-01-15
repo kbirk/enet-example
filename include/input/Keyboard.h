@@ -38,6 +38,11 @@ class Keyboard {
 
 	private:
 
+		// prevent copy-construction
+		Keyboard(const Keyboard&);
+		// prevent assignment
+		Keyboard& operator= (const Keyboard&);
+
 		std::vector<KeyboardEventHandler> handlers_;
 		std::vector<Input::Shared> input_;
 };

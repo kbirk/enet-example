@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common.h"
-#include "math/Transform.h"
+#include "game/Player.h"
 #include "serial/StreamBuffer.h"
 
 #include <memory>
@@ -17,9 +17,9 @@ class Frame {
 
 		Frame();
 
-		void addPlayer(uint32_t, Transform::Shared);
+		void addPlayer(uint32_t, Player::Shared);
 		void removePlayer(uint32_t);
-		const std::map<uint32_t, Transform::Shared>& players() const;
+		const std::map<uint32_t, Player::Shared>& players() const;
 
 		void setTimestamp(std::time_t);
 		std::time_t timestamp() const;
@@ -34,7 +34,7 @@ class Frame {
 		// prevent assignment
 		Frame& operator= (const Frame&);
 
-		std::map<uint32_t, Transform::Shared> players_;
+		std::map<uint32_t, Player::Shared> players_;
 		std::time_t timestamp_;
 };
 

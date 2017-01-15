@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "game/Common.h"
 #include "game/Frame.h"
+#include "game/Player.h"
 #include "log/Log.h"
 #include "math/Transform.h"
 #include "net/DeliveryType.h"
@@ -29,15 +30,26 @@ void signal_handler(int32_t signal) {
 	quit = true;
 }
 
+void process_input(Player::Shared player, Input::Shared input) {
+	player->state()->handleInput(input);
+}
+
 std::vector<uint8_t> serialize_frame(const Frame::Shared& frame) {
 	auto stream = StreamBuffer::alloc();
 	stream << frame;
 	return stream->buffer();
 }
 
-void process_frame(const Frame::Shared& frame, std::time_t now) {
-	float32_t pi2 = 2.0 * M_PI;
-	float32_t angle = std::fmod(((float64_t(now) / 2000000.0) * pi2), pi2);
+Input::Shared deserialize_input(StreamBuffer::Shared stream) {
+	auto input = Input::alloc(0);
+	stream >> input;
+	return input;
+}
+
+void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last) {
+	auto pi2 = 2.0 * M_PI;
+	auto factor = now / float64_t(Time::seconds(2));
+	auto angle = std::fmod(factor * pi2, pi2);
 	// LOG_DEBUG("Setting angle to: " << angle << " radians for time of: " << now);
 	auto axis = glm::vec3(1, 1, 1);
 	for (auto iter : frame->players()) {
@@ -45,9 +57,11 @@ void process_frame(const Frame::Shared& frame, std::time_t now) {
 		auto player = iter.second;
 		if (id > server->numClients()) {
 			// rotate and translate non-clients
-			player->setRotation(angle, axis);
-			player->setTranslation(glm::vec3(std::sin(angle) * 3.0, 0.0, 0.0));
+			player->transform()->setRotation(angle, axis);
+			player->transform()->setTranslation(glm::vec3(std::sin(angle) * 3.0, 0.0, 0.0));
 		}
+		// update player state
+		player->update(now - last);
 	}
 }
 
@@ -68,7 +82,7 @@ int main(int argc, char** argv) {
 
 	frame = Frame::alloc();
 	// TEMP: high enough ID not to conflict with a client id
-	frame->addPlayer(256, Transform::alloc());
+	frame->addPlayer(256, Player::alloc());
 
 	server = Server::alloc();
 	if (server->start(PORT)) {
@@ -88,32 +102,33 @@ int main(int argc, char** argv) {
 
 		// process events
 		for (auto msg : messages) {
-			if (msg->type() == MessageType::CONNECT) {
 
-				LOG_DEBUG("Connection from client_" << msg->id() << " received");
-				frame->addPlayer(msg->id(), Transform::alloc());
-				// inform client what it's ID is
-				// send_client_info(msg->id());
+			switch (msg->type()) {
 
-			} else if (msg->type() == MessageType::DISCONNECT) {
+				case MessageType::CONNECT:
+					LOG_DEBUG("Connection from client_" << msg->id() << " received");
+					frame->addPlayer(msg->id(), Player::alloc());
+					break;
 
-				LOG_DEBUG("Connection from client_" << msg->id() << " lost");
-				frame->removePlayer(msg->id());
+				case MessageType::DISCONNECT:
 
-			} else if (msg->type() == MessageType::DATA) {
+					LOG_DEBUG("Connection from client_" << msg->id() << " lost");
+					frame->removePlayer(msg->id());
+					break;
 
-				LOG_DEBUG("Message recieved from client");
-				auto stream = msg->stream();
-				glm::vec3 direction;
-				stream >> direction;
-				auto players = frame->players();
-				players[msg->id()]->translateGlobal(direction);
+				case MessageType::DATA:
 
+					LOG_DEBUG("Message received from client `" << msg->id() << "`");
+					auto input = deserialize_input(msg->stream());
+					auto players = frame->players();
+					auto player = players[msg->id()];
+					process_input(player, input);
+					break;
 			}
 		}
 
 		// process the frame
-		process_frame(frame, now);
+		process_frame(frame, now, last);
 
 		// update frame timestmap
 		frame->setTimestamp(now);

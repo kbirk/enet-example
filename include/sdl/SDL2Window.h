@@ -31,6 +31,8 @@ class SDL2Window : public Window {
 		Mouse::Shared mouse() const;
 		//Controller::Shared controller() const;
 
+		std::vector<Input::Shared> poll() const;
+
 	private:
 
 		void processEvent(const SDL_Event*) const;

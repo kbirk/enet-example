@@ -28,4 +28,12 @@ class Window {
 		virtual Mouse::Shared mouse() const = 0;
 		//virtual Controller::Shared controller() const = 0;
 
+		virtual std::vector<Input::Shared> poll() const = 0;
+
+	private:
+
+		// prevent copy-construction
+		Window(const Window&);
+		// prevent assignment
+		Window& operator= (const Window&);
 };

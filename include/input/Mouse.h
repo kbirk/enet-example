@@ -60,6 +60,11 @@ class Mouse {
 
 	private:
 
+		// prevent copy-construction
+		Mouse(const Mouse&);
+		// prevent assignment
+		Mouse& operator= (const Mouse&);
+
 		std::vector<MouseMoveHandler> moveHandlers_;
 		std::vector<MouseButtonHandler> buttonHandlers_;
 		std::vector<MouseScrollHandler> scrollHandlers_;

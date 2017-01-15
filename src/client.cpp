@@ -1,6 +1,7 @@
 #include "Common.h"
 #include "game/Common.h"
 #include "game/Frame.h"
+#include "game/InputType.h"
 #include "geometry/Cube.h"
 #include "gl/GLCommon.h"
 #include "gl/ElementArrayBufferObject.h"
@@ -221,6 +222,12 @@ void deserialize_frame(StreamBuffer::Shared stream) {
 	return;
 }
 
+std::vector<uint8_t> serialize_input(Input::Shared input) {
+	auto stream = StreamBuffer::alloc();
+	stream << input;
+	return stream->buffer();
+}
+
 std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) {
 	//
 	//  find closest frames on either side of the delayed time such that:
@@ -316,15 +323,6 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 	return std::make_tuple(from, to, t);
 }
 
-std::vector<Input::Shared> poll_input() {
-	auto keyboardInput = keyboard->poll();
-	auto mouseInput = mouse->poll();
-	std::vector<Input::Shared> input;
-	input.insert(input.end(), keyboardInput.begin(), keyboardInput.end());
-	input.insert(input.end(), mouseInput.begin(), mouseInput.end());
-	return input;
-}
-
 void process_frame(std::time_t now) {
 
 	// update viewport and projection
@@ -333,9 +331,13 @@ void process_frame(std::time_t now) {
 	// process events
 	window->processEvents();
 
-	// poll keyboard state
-	// auto states = Window::pollKeyboard();
-	// handle_keyboard(states);
+	// poll for input
+	auto input = window->poll();
+	// send input to server
+	for (auto i : input) {
+		client->send(DeliveryType::RELIABLE, serialize_input(i));
+	}
+	// TODO: interpolate from input
 
 	// get frames to interpolate between
 	Frame::Shared a, b;
@@ -362,7 +364,7 @@ void process_frame(std::time_t now) {
 	// draw players
 	for (auto iter : frame->players()) {
 		auto player = iter.second;
-		Renderer::render(render_phong(cube, player->matrix()));
+		Renderer::render(render_phong(cube, player->transform()->matrix()));
 	}
 
 	// swap back buffer
@@ -409,6 +411,77 @@ Input::Shared zoom_camera(
 	return nullptr;
 }
 
+Input::Shared move(
+	const KeyboardEvent event,
+	const std::map<Key, KeyState>& keyboardState,
+	const std::map<Button, ButtonState>& mouseState) {
+
+	// only care about movement keys
+	if (event.key != Key::SCAN_W &&
+		event.key != Key::SCAN_A &&
+		event.key != Key::SCAN_S &&
+		event.key != Key::SCAN_D) {
+		return nullptr;
+	}
+
+	// get the state of all movement keys
+	auto w = get(keyboardState, Key::SCAN_W);
+	auto a = get(keyboardState, Key::SCAN_A);
+	auto s = get(keyboardState, Key::SCAN_S);
+	auto d = get(keyboardState, Key::SCAN_D);
+
+	if (event.type == KeyEvent::PRESS ||
+		event.type == KeyEvent::RELEASE) {
+
+		// release
+		if (w == KeyState::UP &&
+			a == KeyState::UP &&
+			s == KeyState::UP &&
+			d == KeyState::UP) {
+			// move stop
+			return Input::alloc(InputType::MOVE_STOP);
+		}
+
+		// press
+		glm::vec3 direction(0, 0, 0);
+		if (w == KeyState::DOWN) {
+			direction += glm::vec3(0, 0, -1);
+		}
+		if (a == KeyState::DOWN) {
+			direction += glm::vec3(-1, 0, 0);
+		}
+		if (s == KeyState::DOWN) {
+			direction += glm::vec3(0, 0, 1);
+		}
+		if (d == KeyState::DOWN) {
+			direction += glm::vec3(1, 0, 0);
+		}
+		// normalize direction
+		direction = glm::normalize(direction);
+		// update movement direction
+		auto input = Input::alloc(InputType::MOVE_DIRECTION);
+		input->emplace("direction", direction);
+		return input;
+	}
+	return nullptr;
+}
+Input::Shared jump(
+	const KeyboardEvent event,
+	const std::map<Key, KeyState>& keyboardState,
+	const std::map<Button, ButtonState>& mouseState) {
+
+	// only care about jump key
+	if (event.key != Key::SCAN_SPACE) {
+		return nullptr;
+	}
+
+	// only care about fresh press
+	// if (event.type == KeyEvent::PRESS) {
+	// 	return Input::alloc(InputType::JUMP);
+	// }
+	return nullptr;
+}
+
 int main(int argc, char** argv) {
 
 	std::srand(std::time(0));
@@ -424,9 +497,8 @@ int main(int argc, char** argv) {
 	mouse->add(zoom_camera);
 
 	keyboard = window->keyboard();
-	// keyboard->add(movementHandler);
-	// keyboard->add(jumpHandler);
-	// keyboard->add(attackHandler);
+	keyboard->add(move);
+	keyboard->add(jump);
 
 	load_viewport();
 	load_camera();
@@ -452,11 +524,13 @@ int main(int argc, char** argv) {
 
 		// process messages
 		for (auto msg : messages) {
+
 			if (msg->type() == MessageType::DISCONNECT) {
 				// handle the disconnect
 				handle_disconnect();
 				// ignore other messages
 				break;
+
 			} else if (msg->type() == MessageType::DATA) {
 				// handle message
 				auto stream = msg->stream();

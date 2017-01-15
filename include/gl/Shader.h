@@ -25,11 +25,6 @@ class Shader {
 
 	protected:
 
-		// prevent copy-construction
-		Shader(const Shader&);
-		// prevent assignment
-		Shader& operator= (const Shader&);
-
 		GLuint id_;
 		std::map<std::string, UniformDescriptor::Shared> descriptors_;
 		std::map<std::string, UniformBlockDescriptor::Shared> blockDescriptors_;
@@ -54,4 +49,12 @@ class Shader {
 		std::vector<GLint> queryUniformBlockSizes(const std::vector<GLuint>&) const;
 		std::vector<std::string> queryUniformBlockNames(const std::vector<GLuint>&) const;
 		void queryUniforms();
+
+	private:
+
+		// prevent copy-construction
+		Shader(const Shader&);
+		// prevent assignment
+		Shader& operator= (const Shader&);
+
 };
