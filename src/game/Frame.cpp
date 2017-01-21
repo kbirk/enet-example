@@ -55,7 +55,6 @@ StreamBuffer::Shared& operator>> (StreamBuffer::Shared& stream, Frame::Shared& f
 }
 
 Frame::Shared interpolate(const Frame::Shared& a, const Frame::Shared& b, float32_t t) {
-
 	// new interpolated frame
 	auto frame = Frame::alloc();
 	frame->setTimestamp(a->timestamp() + ((b->timestamp() - a->timestamp()) * t));
@@ -91,6 +90,5 @@ Frame::Shared interpolate(const Frame::Shared& a, const Frame::Shared& b, float3
 		// interpolate
 		frame->addPlayer(id, interpolate(pa->second, pb->second, t));
 	}
-
 	return frame;
 }

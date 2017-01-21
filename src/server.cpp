@@ -2,6 +2,7 @@
 #include "game/Common.h"
 #include "game/Frame.h"
 #include "game/Player.h"
+#include "game/Terrain.h"
 #include "log/Log.h"
 #include "math/Transform.h"
 #include "net/DeliveryType.h"
@@ -24,6 +25,7 @@ bool quit = false;
 
 Server::Shared server;
 Frame::Shared frame;
+Terrain::Shared terrain;
 
 void signal_handler(int32_t signal) {
 	LOG_DEBUG("Caught signal: " << signal << ", shutting down...");
@@ -83,6 +85,13 @@ int main(int argc, char** argv) {
 	frame = Frame::alloc();
 	// TEMP: high enough ID not to conflict with a client id
 	frame->addPlayer(256, Player::alloc());
+
+	// terrain = Terrain::alloc(
+	// 	"resources/images/dgrass.png",
+	// 	"resources/images/grass.png",
+	// 	"resources/images/dirt.png",
+	// 	"resources/images/rock.png");
+	// terrain->generateGeometry(32, 32, 1.0, 1.0, 4.0, 0.4);
 
 	server = Server::alloc();
 	if (server->start(PORT)) {

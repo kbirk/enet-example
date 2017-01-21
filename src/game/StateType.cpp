@@ -2,6 +2,7 @@
 
 #include "game/Idle.h"
 #include "game/MoveDirection.h"
+#include "game/MoveTo.h"
 
 StreamBuffer::Shared& operator<< (StreamBuffer::Shared& stream, const StateMachine::Shared& machine) {
 	auto state = machine->current();
@@ -31,6 +32,10 @@ StreamBuffer::Shared& operator>> (StreamBuffer::Shared& stream, StateMachine::Sh
 
 		case StateType::MOVE_DIRECTION:
 			state = MoveDirection::alloc();
+			break;
+
+		case StateType::MOVE_TO:
+			state = MoveTo::alloc();
 			break;
 	}
 	stream >> state;

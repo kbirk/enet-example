@@ -51,6 +51,11 @@ bool StreamBuffer::eof() const {
 	return gpos_ >= buffer_.size();
 }
 
+void StreamBuffer::write(bool data) {
+	buffer_.push_back(data ? 1 : 0);
+	ppos_++;
+}
+
 void StreamBuffer::write(uint8_t data) {
 	buffer_.push_back(data);
 	ppos_++;
@@ -109,10 +114,22 @@ void StreamBuffer::write(std::time_t data) {
 	write(uint64_t(data));
 }
 
+void StreamBuffer::write(const glm::vec2& data) {
+	write(data.x);
+	write(data.y);
+}
+
 void StreamBuffer::write(const glm::vec3& data) {
 	write(data.x);
 	write(data.y);
 	write(data.z);
+}
+
+void StreamBuffer::write(const glm::vec4& data) {
+	write(data.x);
+	write(data.y);
+	write(data.z);
+	write(data.w);
 }
 
 void StreamBuffer::write(const glm::quat& data) {
@@ -120,6 +137,10 @@ void StreamBuffer::write(const glm::quat& data) {
 	write(data.y);
 	write(data.z);
 	write(data.w);
+}
+
+void StreamBuffer::read(bool& data) {
+	data = buffer_[gpos_++] ? true : false;
 }
 
 void StreamBuffer::read(uint8_t& data) {
@@ -218,10 +239,22 @@ void StreamBuffer::read(std::string& data) {
 	data.replace(0, len, std::string(bytes, len));
 }
 
+void StreamBuffer::read(glm::vec2& data) {
+	read(data.x);
+	read(data.y);
+}
+
 void StreamBuffer::read(glm::vec3& data) {
 	read(data.x);
 	read(data.y);
 	read(data.z);
+}
+
+void StreamBuffer::read(glm::vec4& data) {
+	read(data.x);
+	read(data.y);
+	read(data.z);
+	read(data.w);
 }
 
 void StreamBuffer::read(glm::quat& data) {

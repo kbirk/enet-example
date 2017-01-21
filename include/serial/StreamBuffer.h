@@ -31,6 +31,7 @@ class StreamBuffer {
 		size_t size() const;
 		bool eof() const;
 
+		void write(bool);
 		void write(uint8_t);
 		void write(uint16_t);
 		void write(uint32_t);
@@ -39,9 +40,12 @@ class StreamBuffer {
 		void write(float64_t);
 		void write(std::time_t);
 		void write(std::string);
+		void write(const glm::vec2&);
 		void write(const glm::vec3&);
+		void write(const glm::vec4&);
 		void write(const glm::quat&);
 
+		void read(bool&);
 		void read(uint8_t&);
 		void read(int8_t&);
 		void read(uint16_t&);
@@ -54,7 +58,9 @@ class StreamBuffer {
 		void read(float64_t&);
 		void read(std::string&);
 		//void read(std::time_t&);
+		void read(glm::vec2&);
 		void read(glm::vec3&);
+		void read(glm::vec4&);
 		void read(glm::quat&);
 
 	private:
@@ -68,6 +74,26 @@ class StreamBuffer {
 		size_t ppos_;
 		std::vector<uint8_t> buffer_;
 };
+
+template<typename T>
+StreamBuffer::Shared& operator<< (StreamBuffer::Shared& stream, const std::vector<T>& data) {
+	stream->write(data.size());
+	for (auto d : data) {
+		stream->write(d);
+	}
+	return stream;
+}
+
+template<typename T>
+StreamBuffer::Shared& operator>> (StreamBuffer::Shared& stream, std::vector<T>& data) {
+	uint32_t size = 0;
+	stream->read(size);
+	data.resize(size);
+	for (auto i = uint32_t(0); i < size; i++) {
+		stream->read(data[i]);
+	}
+	return stream;
+}
 
 template<typename T>
 StreamBuffer::Shared& operator<< (StreamBuffer::Shared& stream, const T& data) {

@@ -24,8 +24,9 @@ struct MouseScrollEvent {
 
 struct MouseButtonEvent {
 
-	MouseButtonEvent(ButtonEvent, Button, std::time_t);
+	MouseButtonEvent(ButtonEvent, Button, glm::vec2 position, std::time_t);
 
+	glm::vec2 position;
 	ButtonEvent type;
 	Button button;
 	std::time_t timestamp;

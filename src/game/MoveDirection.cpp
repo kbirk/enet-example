@@ -2,7 +2,7 @@
 
 #include "game/InputType.h"
 #include "game/Idle.h"
-#include "game/MoveDirection.h"
+#include "game/MoveTo.h"
 #include "game/StateType.h"
 #include "time/Time.h"
 
@@ -28,6 +28,9 @@ State::Shared MoveDirection::handleInput(const Input::Shared& input) {
 	switch (input->type()) {
 		case InputType::MOVE_DIRECTION:
 			return MoveDirection::alloc(input);
+
+		case InputType::MOVE_TO:
+			return MoveTo::alloc(input);
 
 		case InputType::MOVE_STOP:
 			return Idle::alloc(input);

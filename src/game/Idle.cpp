@@ -2,6 +2,7 @@
 
 #include "game/InputType.h"
 #include "game/MoveDirection.h"
+#include "game/MoveTo.h"
 #include "game/StateType.h"
 
 Idle::Shared Idle::alloc(const Input::Shared& input) {
@@ -16,6 +17,9 @@ State::Shared Idle::handleInput(const Input::Shared& input) {
 	switch (input->type()) {
 		case InputType::MOVE_DIRECTION:
 			return MoveDirection::alloc(input);
+
+		case InputType::MOVE_TO:
+			return MoveTo::alloc(input);
 
 		// case InputType::JUMP:
 		// 	return Jump::alloc(input);

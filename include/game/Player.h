@@ -28,6 +28,11 @@ class Player : public std::enable_shared_from_this<Player> {
 
 	private:
 
+		// prevent copy-construction
+		Player(const Player&);
+		// prevent assignment
+		Player& operator= (const Player&);
+
 		Transform::Shared transform_;
 		StateMachine::Shared state_;
 };

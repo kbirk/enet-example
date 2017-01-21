@@ -2,6 +2,7 @@
 #include "game/Common.h"
 #include "game/Frame.h"
 #include "game/InputType.h"
+#include "game/Terrain.h"
 #include "geometry/Cube.h"
 #include "gl/GLCommon.h"
 #include "gl/ElementArrayBufferObject.h"
@@ -58,6 +59,7 @@ Mouse::Shared mouse;
 
 VertexFragmentShader::Shared flatShader;
 VertexFragmentShader::Shared phongShader;
+VertexFragmentShader::Shared terrainShader;
 VertexArrayObject::Shared cube;
 VertexArrayObject::Shared x;
 VertexArrayObject::Shared y;
@@ -70,6 +72,7 @@ Client::Shared client;
 Transform::Shared camera;
 
 std::deque<Frame::Shared> frames;
+Terrain::Shared terrain;
 
 void add_frame(Frame::Shared frame) {
 	// prepend
@@ -87,6 +90,9 @@ void load_shaders() {
 	// phong
 	phongShader = VertexFragmentShader::alloc();
 	phongShader->create(shader_path("phong", "vert"), shader_path("phong", "frag"));
+	// terrain
+	terrainShader = VertexFragmentShader::alloc();
+	terrainShader->create(shader_path("terrain", "vert"), shader_path("terrain", "frag"));
 }
 
 void load_cube() {
@@ -189,6 +195,30 @@ std::vector<RenderCommand::Shared> render_axes() {
 	return commands;
 }
 
+std::vector<RenderCommand::Shared> render_terrain(Terrain::Shared terrain) {
+	auto commands = std::vector<RenderCommand::Shared>();
+	auto command = RenderCommand::alloc();
+	command->uniforms[UniformType::MODEL_MATRIX] = Uniform::alloc(terrain->transform()->matrix());
+	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->viewMatrix());
+	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(projection);
+	command->uniforms[UniformType::LIGHT_POSITION0] = Uniform::alloc(glm::vec3(0.0, 10.0, 10.0));
+	command->uniforms[UniformType::TEXTURE_SAMPLER0] = Uniform::alloc(0);
+	command->uniforms[UniformType::TEXTURE_SAMPLER1] = Uniform::alloc(1);
+	command->uniforms[UniformType::TEXTURE_SAMPLER2] = Uniform::alloc(2);
+	command->uniforms[UniformType::TEXTURE_SAMPLER3] = Uniform::alloc(3);
+	command->textures[GL_TEXTURE0] = terrain->texture(0);
+	command->textures[GL_TEXTURE1] = terrain->texture(1);
+	command->textures[GL_TEXTURE2] = terrain->texture(2);
+	command->textures[GL_TEXTURE3] = terrain->texture(3);
+	command->enables.push_back(GL_DEPTH_TEST);
+	command->enables.push_back(GL_BLEND);
+	command->viewport = viewport;
+	command->shader = terrainShader;
+	command->vao = terrain->vao();
+	commands.push_back(command);
+	return commands;
+}
+
 void signal_handler(int32_t signal) {
 	LOG_DEBUG("Caught signal: " << signal << ", shutting down...");
 	quit = true;
@@ -232,27 +262,27 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 	//
 	//  find closest frames on either side of the delayed time such that:
 	//
-	//      frame0->timestamp() < (now - delay) < frame0->timestamp()
+	//	  frame0->timestamp() < (now - delay) < frame0->timestamp()
 	//
-	//              interpolation window
-	//                      |
-	//                      V
-	//                 -----------
-	//                 |         |
+	//			  interpolation window
+	//					  |
+	//					  V
+	//				 -----------
+	//				 |		 |
 	//  - - - - - - - - - - - - - - - - - - - - - - - - -
-	//  |       |       |   x   |       |   x   |       |
+	//  |	   |	   |   x   |	   |   x   |	   |
 	//
-	//  0       1       2       3       4       5       6    <- frames
-	//                 |         |
-	//                 -----------
-	//                      ^               ^
-	//                      |               |
-	//                   delayed          actual
-	//                    time             time
-	//                      -----------------
-	//                              ^
-	//                              |
-	//                     interpolation delay
+	//  0	   1	   2	   3	   4	   5	   6	<- frames
+	//				 |		 |
+	//				 -----------
+	//					  ^			   ^
+	//					  |			   |
+	//				   delayed		  actual
+	//					time			 time
+	//					  -----------------
+	//							  ^
+	//							  |
+	//					 interpolation delay
 
 	// we need at least 2 frames
 	if (frames.size() < 2) {
@@ -361,6 +391,9 @@ void process_frame(std::time_t now) {
 	// draw origin
 	Renderer::render(render_axes());
 
+	// draw terrain
+	Renderer::render(render_terrain(terrain));
+
 	// draw players
 	for (auto iter : frame->players()) {
 		auto player = iter.second;
@@ -381,12 +414,75 @@ void load_camera() {
 	camera->setTranslation(glm::vec3(0, 0.0, DEFAULT_DISTANCE));
 }
 
+glm::vec3 mouse_to_world(glm::vec2 position) {
+	auto mvp = projection * camera->viewMatrix();
+	auto mvpInverse = glm::inverse(mvp);
+	// map window coords to range [0 .. 1]
+	// TODO: fix for high DPI?
+	auto width = viewport->width;
+	auto height = viewport->height;
+	auto nx = position.x / width;
+	auto ny = (height - position.y) / height;
+	auto nz = 0.0;
+	// map to range of [-1 .. 1]
+	auto input = glm::vec4(
+		(nx * 2.0) - 1.0,
+		(ny * 2.0) - 1.0,
+		(nz * 2.0) - 1.0,
+		1.0);
+	auto output = mvpInverse * input;
+	if (output.w == 0.0) {
+		LOG_ERROR("w == 0.0");
+		return glm::vec3();
+	}
+	auto world = glm::vec3(
+		output.x / output.w,
+		output.y / output.w,
+		output.z / output.w);
+	return glm::normalize(world - camera->translation());
+}
+
+Input::Shared move_to_click(
+	const MouseButtonEvent& event,
+	const std::map<Button, ButtonState>& mouseState,
+	const std::map<Key, KeyState>& keyboardState) {
+	if (event.button == Button::LEFT) {
+		auto direction = mouse_to_world(event.position);
+		auto origin = camera->translation();
+		auto intersection = terrain->intersect(direction, origin);
+		if (intersection.hit) {
+			auto input = Input::alloc(InputType::MOVE_TO);
+			input->emplace("position", intersection.position);
+			return input;
+		}
+	}
+	return nullptr;
+}
+
+Input::Shared move_to_hold(
+	const MouseMoveEvent& event,
+	const std::map<Button, ButtonState>& mouseState,
+	const std::map<Key, KeyState>& keyboardState) {
+	auto button = get(mouseState, Button::LEFT);
+	if (button == ButtonState::DOWN) {
+		auto direction = mouse_to_world(event.position);
+		auto origin = camera->translation();
+		auto intersection = terrain->intersect(direction, origin);
+		if (intersection.hit) {
+			auto input = Input::alloc(InputType::MOVE_TO);
+			input->emplace("position", intersection.position);
+			return input;
+		}
+	}
+	return nullptr;
+}
+
 Input::Shared rotate_camera(
 	const MouseMoveEvent& event,
 	const std::map<Button, ButtonState>& mouseState,
 	const std::map<Key, KeyState>& keyboardState) {
 	// rotate with mouse button
-	auto button = get(mouseState, Button::LEFT);
+	auto button = get(mouseState, Button::RIGHT);
 	if (button == ButtonState::DOWN) {
 		float32_t xAngle = event.delta.x * X_FACTOR * (M_PI / 180.0);
 		float32_t yAngle = event.delta.y * Y_FACTOR * (M_PI / 180.0);
@@ -457,14 +553,20 @@ Input::Shared move(
 			direction += glm::vec3(1, 0, 0);
 		}
 		// normalize direction
+		if (length(direction) < 0.00001) {
+			// move stop
+			return Input::alloc(InputType::MOVE_STOP);
+		}
 		direction = glm::normalize(direction);
 		// update movement direction
 		auto input = Input::alloc(InputType::MOVE_DIRECTION);
 		input->emplace("direction", direction);
+		LOG_INFO("sending input: " << glm::to_string(direction));
 		return input;
 	}
 	return nullptr;
 }
+
 Input::Shared jump(
 	const KeyboardEvent event,
 	const std::map<Key, KeyState>& keyboardState,
@@ -491,10 +593,12 @@ int main(int argc, char** argv) {
 	std::signal(SIGQUIT, signal_handler);
 	std::signal(SIGTERM, signal_handler);
 
-	window = SDL2Window::alloc("ENet Example", 768, 512);
+	window = SDL2Window::alloc("ENet Example", 1024, 768);
 	mouse = window->mouse();
 	mouse->add(rotate_camera);
 	mouse->add(zoom_camera);
+	mouse->add(move_to_click);
+	mouse->add(move_to_hold);
 
 	keyboard = window->keyboard();
 	keyboard->add(move);
@@ -511,6 +615,16 @@ int main(int argc, char** argv) {
 	if (client->connect(HOST, PORT)) {
 		return 1;
 	}
+
+	terrain = Terrain::alloc(
+		"resources/images/rock.png",
+		"resources/images/grass.png",
+		"resources/images/dgrass.png",
+		"resources/images/dirt.png");
+	terrain->generateGeometry(512, 512, 0.02, 2.0, 0.01);
+	terrain->generateVAO();
+	terrain->transform()->translateLocal(glm::vec3(0, -3, 0));
+	terrain->transform()->setScale(3.0);
 
 	while (!window->shouldClose() && !quit) {
 

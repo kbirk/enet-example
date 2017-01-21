@@ -50,8 +50,10 @@ void SDL2Mouse::handleMouseButtonEvent(const SDL_Event* sdl, const std::map<Key,
 		// get event
 		auto button = iter->second;
 		auto type = translateButtonEvent(sdl);
+		auto x = sdl->button.x;
+		auto y = sdl->button.y;
 		auto timestamp = Time::milliseconds(sdl->button.timestamp);
-		auto event = MouseButtonEvent(type, button, timestamp);
+		auto event = MouseButtonEvent(type, button, glm::vec2(x, y), timestamp);
 		// update state
 		updateState(event);
 		// dispatch event / state

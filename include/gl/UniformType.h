@@ -15,9 +15,11 @@ namespace UniformType {
 	const std::string TEXTURE_SAMPLER0 = "uTextureSampler0";
 	const std::string TEXTURE_SAMPLER1 = "uTextureSampler1";
 	const std::string TEXTURE_SAMPLER2 = "uTextureSampler2";
+	const std::string TEXTURE_SAMPLER3 = "uTextureSampler3";
 	const std::string CUBEMAP_SAMPLER0 = "uCubeMapSampler0";
 	const std::string CUBEMAP_SAMPLER1 = "uCubeMapSampler1";
 	const std::string CUBEMAP_SAMPLER2 = "uCubeMapSampler2";
+	const std::string CUBEMAP_SAMPLER3 = "uCubeMapSampler3";
 	// font
 	const std::string FONT_UV_OFFSET = "uFontUVOffset";
 	const std::string FONT_UV_SIZE = "uFontUVSize";

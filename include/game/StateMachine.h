@@ -2,7 +2,6 @@
 
 #include "Common.h"
 #include "game/State.h"
-//#include "game/Player.h"
 #include "input/Input.h"
 
 class Player;
