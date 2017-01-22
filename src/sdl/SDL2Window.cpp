@@ -68,6 +68,13 @@ void SDL2Window::swapBuffers() const{
 glm::ivec2 SDL2Window::size() const {
 	int32_t w = 0;
 	int32_t h = 0;
+	SDL_GetWindowSize(window_, &w, &h);
+	return glm::ivec2(w, h);
+}
+
+glm::ivec2 SDL2Window::bufferSize() const {
+	int32_t w = 0;
+	int32_t h = 0;
 	SDL_GL_GetDrawableSize(window_, &w, &h);
 	return glm::ivec2(w, h);
 }

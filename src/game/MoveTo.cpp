@@ -46,7 +46,7 @@ State::Shared MoveTo::update(Player::Shared& player, std::time_t dt) {
 	auto dist = glm::length(diff);
 	auto fdt = dt / float32_t(Time::seconds(1));
 	dist = std::min(fdt * PLAYER_SPEED, dist);
-	if (dist < 0.000001) {
+	if (dist < M_EPSILON) {
 		return Idle::alloc(nullptr);
 	}
 	auto direction = glm::normalize(diff);

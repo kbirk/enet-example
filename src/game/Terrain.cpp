@@ -4,9 +4,6 @@
 
 #include "Simplex.h"
 
-const uint32_t NUM_SPLITS = 4;
-const glm::vec4 SPLITS = glm::vec4(0.0, 0.333, 0.66, 1.0);
-
 Texture2D::Shared loadTextureRGBA(const std::string& path) {
 	// load image
 	uint32_t width, height;

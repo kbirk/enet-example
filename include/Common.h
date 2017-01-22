@@ -21,6 +21,13 @@ typedef double float64_t;
 #endif
 
 /**
+ * Define EPSILON
+ */
+#ifndef M_EPSILON
+	#define M_EPSILON 0.000001
+#endif
+
+/**
  * Utility lookup for const map types.
  */
 template <typename T>

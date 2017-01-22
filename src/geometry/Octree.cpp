@@ -271,20 +271,23 @@ Intersection Octree::intersect(const glm::vec3& ray, const glm::vec3& origin, bo
 		}
 	}
 
+	auto fx = fabs(ray.x) * halfWidth_;
+	auto fy = fabs(ray.y) * halfWidth_;
+	auto fz = fabs(ray.z) * halfWidth_;
 	glm::vec3 absDirection(fabs(ray.x), fabs(ray.y), fabs(ray.z));
 
 	float32_t f = ray.y * diff.z - ray.z * diff.y;
-	if (fabs(f) > halfWidth_*absDirection.z + halfWidth_*absDirection.y) {
+	if (fabs(f) > fz + fy) {
 		return Intersection();
 	}
 
 	f = ray.z * diff.x - ray.x * diff.z;
-	if (fabs(f) > halfWidth_*absDirection.z + halfWidth_*absDirection.x) {
+	if (fabs(f) > fz + fx) {
 		return Intersection();
 	}
 
 	f = ray.x * diff.y - ray.y * diff.x;
-	if (fabs(f) > halfWidth_*absDirection.y + halfWidth_*absDirection.x) {
+	if (fabs(f) > fy + fx) {
 		return Intersection();
 	}
 
@@ -303,7 +306,7 @@ Intersection Octree::intersect(const glm::vec3& ray, const glm::vec3& origin, bo
 				auto dist = glm::length2(origin - intersection.position);
 				if (dist < min) {
 					closest = intersection;
-					min = min;
+					min = dist;
 				}
 			}
 			childCount++;
@@ -318,7 +321,7 @@ Intersection Octree::intersect(const glm::vec3& ray, const glm::vec3& origin, bo
 				auto dist = glm::length2(origin - intersection.position);
 				if (dist < min) {
 					closest = intersection;
-					min = min;
+					min = dist;
 				}
 			}
 		}

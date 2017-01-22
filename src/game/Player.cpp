@@ -23,8 +23,8 @@ Player::Player(Transform::Shared transform, State::Shared state)
 	state_->set(state);
 }
 
-void Player::update(std::time_t t) {
-	state_->update(shared_from_this(), t);
+void Player::update(std::time_t dt) {
+	state_->update(shared_from_this(), dt);
 }
 
 Transform::Shared Player::transform() {

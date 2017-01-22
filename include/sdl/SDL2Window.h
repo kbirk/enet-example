@@ -26,6 +26,7 @@ class SDL2Window : public Window {
 
 		bool shouldClose() const;
 		glm::ivec2 size() const;
+		glm::ivec2 bufferSize() const;
 
 		Keyboard::Shared keyboard() const;
 		Mouse::Shared mouse() const;

@@ -23,6 +23,7 @@ class Window {
 
 		virtual bool shouldClose() const = 0;
 		virtual glm::ivec2 size() const = 0;
+		virtual glm::ivec2 bufferSize() const = 0;
 
 		virtual Keyboard::Shared keyboard() const = 0;
 		virtual Mouse::Shared mouse() const = 0;

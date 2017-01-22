@@ -238,7 +238,7 @@ void handle_disconnect() {
 }
 
 void update_view() {
-	auto size = window->size();
+	auto size = window->bufferSize();
 	// update viewport size
 	viewport->resize(0, 0, size.x, size.y);
 	// update projection
@@ -405,13 +405,14 @@ void process_frame(std::time_t now) {
 }
 
 void load_viewport() {
-	auto size = window->size();
+	auto size = window->bufferSize();
 	viewport = Viewport::alloc(0, 0, size.x, size.y);
 }
 
 void load_camera() {
 	camera = Transform::alloc();
-	camera->setTranslation(glm::vec3(0, 0.0, DEFAULT_DISTANCE));
+	camera->setTranslation(glm::normalize(glm::vec3(0, 1, 1)) * DEFAULT_DISTANCE);
+	camera->rotateLocal(-M_PI/4.0, glm::vec3(1, 0, 0));
 }
 
 glm::vec3 mouse_to_world(glm::vec2 position) {
@@ -419,10 +420,9 @@ glm::vec3 mouse_to_world(glm::vec2 position) {
 	auto mvpInverse = glm::inverse(mvp);
 	// map window coords to range [0 .. 1]
 	// TODO: fix for high DPI?
-	auto width = viewport->width;
-	auto height = viewport->height;
-	auto nx = position.x / width;
-	auto ny = (height - position.y) / height;
+	auto size = window->size();
+	auto nx = position.x / size.x;
+	auto ny = (size.y - position.y) / size.y;
 	auto nz = 0.0;
 	// map to range of [-1 .. 1]
 	auto input = glm::vec4(
@@ -553,7 +553,7 @@ Input::Shared move(
 			direction += glm::vec3(1, 0, 0);
 		}
 		// normalize direction
-		if (length(direction) < 0.00001) {
+		if (glm::length2(direction) < M_EPSILON) {
 			// move stop
 			return Input::alloc(InputType::MOVE_STOP);
 		}
