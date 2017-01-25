@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+#include "game/Environment.h"
 #include "game/Player.h"
 #include "game/State.h"
 #include "input/Input.h"
@@ -17,7 +18,7 @@ class Idle : public State {
 		Idle(const Input::Shared& = nullptr);
 
 		State::Shared handleInput(const Input::Shared&);
-		State::Shared update(Player::Shared&, std::time_t);
+		State::Shared update(Player::Shared&, Environment::Shared, std::time_t);
 
 	protected:
 

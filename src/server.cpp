@@ -26,6 +26,7 @@ bool quit = false;
 Server::Shared server;
 Frame::Shared frame;
 Terrain::Shared terrain;
+Environment::Shared environment;
 
 void signal_handler(int32_t signal) {
 	LOG_DEBUG("Caught signal: " << signal << ", shutting down...");
@@ -63,7 +64,7 @@ void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last
 			player->transform()->setTranslation(glm::vec3(std::sin(angle) * 3.0, 0.0, 0.0));
 		}
 		// update player state
-		player->update(now - last);
+		player->update(environment, now - last);
 	}
 }
 
@@ -74,6 +75,17 @@ void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last
 // 	server->send(id, DeliveryType::RELIABLE, bytes);
 // }
 
+void load_environment() {
+	// create terrain
+	auto terrain = Terrain::alloc();
+	terrain->generateGeometry(512, 512, 0.02, 2.0, 0.01);
+	terrain->transform()->translateLocal(glm::vec3(0, -3, 0));
+	terrain->transform()->setScale(3.0);
+	// create env
+	environment = Environment::alloc();
+	environment->addTerrain(0, terrain);
+}
+
 int main(int argc, char** argv) {
 
 	std::srand(std::time(0));
@@ -82,16 +94,11 @@ int main(int argc, char** argv) {
 	std::signal(SIGQUIT, signal_handler);
 	std::signal(SIGTERM, signal_handler);
 
+	load_environment();
+
 	frame = Frame::alloc();
 	// TEMP: high enough ID not to conflict with a client id
 	frame->addPlayer(256, Player::alloc());
-
-	// terrain = Terrain::alloc(
-	// 	"resources/images/dgrass.png",
-	// 	"resources/images/grass.png",
-	// 	"resources/images/dirt.png",
-	// 	"resources/images/rock.png");
-	// terrain->generateGeometry(32, 32, 1.0, 1.0, 4.0, 0.4);
 
 	server = Server::alloc();
 	if (server->start(PORT)) {

@@ -4,7 +4,7 @@
 #include "geometry/Geometry.h"
 #include "gl/Texture2D.h"
 #include "gl/VertexArrayObject.h"
-#include "geometry/Octree.h"
+#include "geometry/Geometry.h"
 #include "math/Transform.h"
 #include "serial/StreamBuffer.h"
 
@@ -13,12 +13,14 @@ class Terrain {
 	public:
 
 		typedef std::shared_ptr<Terrain> Shared;
+		static Shared alloc();
 		static Shared alloc(
 			const std::string&,
 			const std::string&,
 			const std::string&,
 			const std::string&);
 
+		Terrain();
 		Terrain(
 			const std::string&,
 			const std::string&,
@@ -36,8 +38,6 @@ class Terrain {
 
 		Transform::Shared transform();
 		Texture2D::Shared texture(uint8_t index) const;
-		Geometry::Shared geometry() const;
-		Octree::Shared octree() const;
 		VertexArrayObject::Shared vao() const;
 
 		Intersection intersect(const glm::vec3&, const glm::vec3&, bool ignoreBehindRay = true, bool backFaceCull = true) const;
@@ -55,6 +55,5 @@ class Terrain {
 		Transform::Shared transform_;
 		std::vector<Texture2D::Shared> textures_;
 		Geometry::Shared geometry_;
-		Octree::Shared octree_;
 		VertexArrayObject::Shared vao_;
 };

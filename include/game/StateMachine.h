@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+#include "game/Environment.h"
 #include "game/State.h"
 #include "input/Input.h"
 
@@ -20,7 +21,10 @@ class StateMachine {
 		void set(State::Shared);
 
 		void handleInput(const Input::Shared&);
-		void update(std::shared_ptr<Player>, std::time_t);
+		void update(
+			std::shared_ptr<Player>,
+			Environment::Shared,
+			std::time_t);
 
 	private:
 

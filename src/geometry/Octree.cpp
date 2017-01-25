@@ -298,10 +298,10 @@ Intersection Octree::intersect(const glm::vec3& ray, const glm::vec3& origin, bo
 	Intersection closest;
 	float32_t min = std::numeric_limits<float32_t>::max();
 
+	// if not leaf, intersect children
 	for (uint32_t i=0; i<8; i++) {
 		if (children_[i]) {
 			auto intersection = children_[i]->intersect(ray, origin, ignoreBehindRay, backFaceCull);
-			// not a leaf, recurse
 			if (intersection.hit) {
 				auto dist = glm::length2(origin - intersection.position);
 				if (dist < min) {

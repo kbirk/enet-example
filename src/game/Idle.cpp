@@ -27,7 +27,7 @@ State::Shared Idle::handleInput(const Input::Shared& input) {
 	return nullptr;
 }
 
-State::Shared Idle::update(Player::Shared& player, std::time_t t) {
+State::Shared Idle::update(Player::Shared& player, Environment::Shared env, std::time_t t) {
 	return nullptr;
 }
 

@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "input/Input.h"
+#include "game/Environment.h"
 #include "game/State.h"
 #include "game/StateMachine.h"
 #include "math/Transform.h"
@@ -18,7 +19,7 @@ class Player : public std::enable_shared_from_this<Player> {
 		Player();
 		Player(Transform::Shared, State::Shared);
 
-		void update(std::time_t);
+		void update(Environment::Shared, std::time_t);
 
 		Transform::Shared transform();
 		StateMachine::Shared state();

@@ -28,9 +28,9 @@ void StateMachine::handleInput(const Input::Shared& input) {
 	}
 }
 
-void StateMachine::update(std::shared_ptr<Player> player, std::time_t time) {
+void StateMachine::update(std::shared_ptr<Player> player, Environment::Shared env, std::time_t time) {
 	if (current_) {
-		auto next = current_->update(player, time);
+		auto next = current_->update(player, env, time);
 		if (next) {
 			set(next);
 		}

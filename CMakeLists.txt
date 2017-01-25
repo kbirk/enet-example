@@ -16,8 +16,10 @@ find_package(OpenGL REQUIRED)
 find_package(SDL2 REQUIRED)
 
 # Warning pedantic flags for all
-set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
-set(CMAKE_CXX_FLAGS "-Wall -Werror -pedantic -Wfatal-errors -O2 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -Wpedantic -Wfatal-errors")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-missing-braces -Wno-unused-parameter")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
 
 # Dependencies and include locations
 include_directories("include")
@@ -32,6 +34,7 @@ include_directories(${SDL2_INCLUDE_DIR})
 
 # Add source files
 set(client_sources
+	"src/game/Environment"
 	"src/game/Frame"
 	"src/game/Idle"
 	"src/game/MoveDirection"
@@ -97,6 +100,7 @@ target_link_libraries(client
 
 # Add source files
 set(server_sources
+	"src/game/Environment"
 	"src/game/Frame"
 	"src/game/Idle"
 	"src/game/MoveDirection"

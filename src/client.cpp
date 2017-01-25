@@ -2,7 +2,7 @@
 #include "game/Common.h"
 #include "game/Frame.h"
 #include "game/InputType.h"
-#include "game/Terrain.h"
+#include "game/Environment.h"
 #include "geometry/Cube.h"
 #include "gl/GLCommon.h"
 #include "gl/ElementArrayBufferObject.h"
@@ -32,6 +32,7 @@
 #include <string>
 #include <thread>
 #include <deque>
+#include <fstream>
 
 const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
@@ -72,7 +73,7 @@ Client::Shared client;
 Transform::Shared camera;
 
 std::deque<Frame::Shared> frames;
-Terrain::Shared terrain;
+Environment::Shared environment;
 
 void add_frame(Frame::Shared frame) {
 	// prepend
@@ -392,7 +393,11 @@ void process_frame(std::time_t now) {
 	Renderer::render(render_axes());
 
 	// draw terrain
-	Renderer::render(render_terrain(terrain));
+	for (auto iter : environment->terrain()) {
+		auto terrain = iter.second;
+		Renderer::render(render_terrain(terrain));
+	}
+
 
 	// draw players
 	for (auto iter : frame->players()) {
@@ -449,7 +454,7 @@ Input::Shared move_to_click(
 	if (event.button == Button::LEFT) {
 		auto direction = mouse_to_world(event.position);
 		auto origin = camera->translation();
-		auto intersection = terrain->intersect(direction, origin);
+		auto intersection = environment->intersect(direction, origin);
 		if (intersection.hit) {
 			auto input = Input::alloc(InputType::MOVE_TO);
 			input->emplace("position", intersection.position);
@@ -467,7 +472,7 @@ Input::Shared move_to_hold(
 	if (button == ButtonState::DOWN) {
 		auto direction = mouse_to_world(event.position);
 		auto origin = camera->translation();
-		auto intersection = terrain->intersect(direction, origin);
+		auto intersection = environment->intersect(direction, origin);
 		if (intersection.hit) {
 			auto input = Input::alloc(InputType::MOVE_TO);
 			input->emplace("position", intersection.position);
@@ -584,6 +589,48 @@ Input::Shared jump(
 	return nullptr;
 }
 
+Input::Shared save_terrain(
+	const KeyboardEvent event,
+	const std::map<Key, KeyState>& keyboardState,
+	const std::map<Button, ButtonState>& mouseState) {
+
+	// only care about jump key
+	if (event.key != Key::SCAN_T) {
+		return nullptr;
+	}
+
+	// save env
+	for (auto iter : environment->terrain()) {
+		auto id = iter.first;
+		auto terrain = iter.second;
+		LOG_INFO("Saving " << id << "-terrain.bin");
+		auto name = id + "-terrain.bin";
+		std::ofstream file(name, std::ios::binary);
+		auto stream = StreamBuffer::alloc();
+		stream << terrain;
+		auto data = &stream->buffer()[0];
+		file.write((const char*)(data), stream->size());
+		file.close();
+	}
+
+	return nullptr;
+}
+void load_environment() {
+	// create terrain
+	auto terrain = Terrain::alloc(
+		"resources/images/rock.png",
+		"resources/images/grass.png",
+		"resources/images/dgrass.png",
+		"resources/images/dirt.png");
+	terrain->generateGeometry(512, 512, 0.02, 2.0, 0.01);
+	terrain->transform()->translateLocal(glm::vec3(0, -3, 0));
+	terrain->transform()->setScale(3.0);
+	terrain->generateVAO();
+	// create env
+	environment = Environment::alloc();
+	environment->addTerrain(0, terrain);
+}
+
 int main(int argc, char** argv) {
 
 	std::srand(std::time(0));
@@ -603,28 +650,20 @@ int main(int argc, char** argv) {
 	keyboard = window->keyboard();
 	keyboard->add(move);
 	keyboard->add(jump);
+	keyboard->add(save_terrain);
 
 	load_viewport();
 	load_camera();
 	load_cube();
 	load_shaders();
 	load_axes();
+	load_environment();
 
 	client = Client::alloc();
 
 	if (client->connect(HOST, PORT)) {
 		return 1;
 	}
-
-	terrain = Terrain::alloc(
-		"resources/images/rock.png",
-		"resources/images/grass.png",
-		"resources/images/dgrass.png",
-		"resources/images/dirt.png");
-	terrain->generateGeometry(512, 512, 0.02, 2.0, 0.01);
-	terrain->generateVAO();
-	terrain->transform()->translateLocal(glm::vec3(0, -3, 0));
-	terrain->transform()->setScale(3.0);
 
 	while (!window->shouldClose() && !quit) {
 

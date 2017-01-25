@@ -33,7 +33,7 @@ State::Shared MoveTo::handleInput(const Input::Shared& input) {
 			return MoveTo::alloc(input);
 
 		case InputType::MOVE_STOP:
-			return Idle::alloc(input);
+			return Idle::alloc();
 
 		// case InputType::JUMP:
 		// 	return Jump::alloc(input);
@@ -41,7 +41,7 @@ State::Shared MoveTo::handleInput(const Input::Shared& input) {
 	return nullptr;
 }
 
-State::Shared MoveTo::update(Player::Shared& player, std::time_t dt) {
+State::Shared MoveTo::update(Player::Shared& player, Environment::Shared env, std::time_t dt) {
 	auto diff = position_ - player->transform()->translation();
 	auto dist = glm::length(diff);
 	auto fdt = dt / float32_t(Time::seconds(1));
@@ -51,7 +51,15 @@ State::Shared MoveTo::update(Player::Shared& player, std::time_t dt) {
 	}
 	auto direction = glm::normalize(diff);
 	auto translation = direction * dist;
-	player->transform()->translateGlobal(translation);
+	// intersect with terrain
+	auto intersection = env->intersect(
+		glm::vec3(0, 1, 0),
+		translation + player->transform()->translation(),
+		false,
+		false);
+	if (intersection.hit) {
+		player->transform()->setTranslation(intersection.position);
+	}
 	return nullptr;
 }
 

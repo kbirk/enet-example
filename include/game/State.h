@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "input/Input.h"
+#include "game/Environment.h"
 #include "serial/StreamBuffer.h"
 
 #include <memory>
@@ -22,7 +23,10 @@ class State {
 		uint8_t type() const;
 
 		virtual State::Shared handleInput(const Input::Shared&) = 0;
-		virtual State::Shared update(std::shared_ptr<Player>&, std::time_t) = 0;
+		virtual State::Shared update(
+			std::shared_ptr<Player>&,
+			Environment::Shared,
+			std::time_t) = 0;
 
 		friend StreamBuffer::Shared& operator<< (StreamBuffer::Shared&, const State::Shared&);
 		friend StreamBuffer::Shared& operator>> (StreamBuffer::Shared&, State::Shared&);

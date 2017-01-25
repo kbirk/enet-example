@@ -26,12 +26,20 @@ glm::vec4 getWeights(float32_t n) {
 	return glm::vec4(0, 0, 1 - p, p);
 }
 
+Terrain::Shared Terrain::alloc() {
+	return std::make_shared<Terrain>();
+}
+
 Terrain::Shared Terrain::alloc(
 	const std::string& file0,
 	const std::string& file1,
 	const std::string& file2,
 	const std::string& file3) {
 	return std::make_shared<Terrain>(file0, file1, file2, file3);
+}
+
+Terrain::Terrain() {
+	transform_ = Transform::alloc();
 }
 
 Terrain::Terrain(
@@ -215,10 +223,6 @@ Transform::Shared Terrain::transform() {
 
 Texture2D::Shared Terrain::texture(uint8_t index) const {
 	return textures_[index];
-}
-
-Geometry::Shared Terrain::geometry() const {
-	return geometry_;
 }
 
 VertexArrayObject::Shared Terrain::vao() const {
