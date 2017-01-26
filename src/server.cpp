@@ -61,7 +61,16 @@ void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last
 		if (id > server->numClients()) {
 			// rotate and translate non-clients
 			player->transform()->setRotation(angle, axis);
-			player->transform()->setTranslation(glm::vec3(std::sin(angle) * 3.0, 0.0, 0.0));
+			auto translation = glm::vec3(std::sin(angle) * 3.0, 0.0, 0.0);
+			// intersect with terrain
+			auto intersection = environment->intersect(
+				glm::vec3(0, 1, 0),
+				translation,
+				false,
+				false);
+			if (intersection.hit) {
+				player->transform()->setTranslation(intersection.position);
+			}
 		}
 		// update player state
 		player->update(environment, now - last);

@@ -57,11 +57,13 @@ class StreamBuffer {
 		void read(float32_t&);
 		void read(float64_t&);
 		void read(std::string&);
-		//void read(std::time_t&);
+		// void read(std::time_t&);
 		void read(glm::vec2&);
 		void read(glm::vec3&);
 		void read(glm::vec4&);
 		void read(glm::quat&);
+
+		void writeToFile(const std::string&) const;
 
 	private:
 
@@ -77,7 +79,7 @@ class StreamBuffer {
 
 template<typename T>
 StreamBuffer::Shared& operator<< (StreamBuffer::Shared& stream, const std::vector<T>& data) {
-	stream->write(data.size());
+	stream->write(uint32_t(data.size()));
 	for (auto d : data) {
 		stream->write(d);
 	}

@@ -1,5 +1,6 @@
 #include "Common.h"
 #include "game/Common.h"
+#include "game/Camera.h"
 #include "game/Frame.h"
 #include "game/InputType.h"
 #include "game/Environment.h"
@@ -32,25 +33,10 @@
 #include <string>
 #include <thread>
 #include <deque>
-#include <fstream>
 
 const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
 const std::time_t DISCONNECT_TIMEOUT = Time::seconds(5);
-
-const float32_t DEFAULT_DISTANCE = 10.0f;
-const float32_t SCROLL_FACTOR = 0.5f;
-const float32_t MAX_DISTANCE = DEFAULT_DISTANCE * 10.0;
-const float32_t MIN_DISTANCE = 0.0;
-const float32_t X_FACTOR = -0.1;
-const float32_t Y_FACTOR = -0.2;
-
-const float32_t FIELD_OF_VIEW = 60.0f / (180.0f / M_PI);
-const float32_t NEAR_PLANE = 0.1f;
-const float32_t FAR_PLANE = 10000.0f;
-
-bool down = false;
-float32_t distance = DEFAULT_DISTANCE;
 
 bool quit = false;
 
@@ -67,10 +53,8 @@ VertexArrayObject::Shared y;
 VertexArrayObject::Shared z;
 Viewport::Shared viewport;
 
-glm::mat4 projection;
-
 Client::Shared client;
-Transform::Shared camera;
+Camera::Shared camera;
 
 std::deque<Frame::Shared> frames;
 Environment::Shared environment;
@@ -144,8 +128,8 @@ void load_axes() {
 RenderCommand::Shared render_phong(VertexArrayObject::Shared vao, glm::mat4 model) {
 	auto command = RenderCommand::alloc();
 	command->uniforms[UniformType::MODEL_MATRIX] = Uniform::alloc(model);
-	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->viewMatrix());
-	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(projection);
+	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->transform()->viewMatrix());
+	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(camera->projection());
 	command->uniforms[UniformType::LIGHT_POSITION0] = Uniform::alloc(glm::vec3(0.0, 10.0, 10.0));
 	command->uniforms[UniformType::SPECULAR_COLOR] = Uniform::alloc(glm::vec4(1.0, 1.0, 1.0, 1.0));
 	command->uniforms[UniformType::DIFFUSE_COLOR] = Uniform::alloc(glm::vec4(0.5, 0.5, 0.5, 1.0));
@@ -162,8 +146,8 @@ RenderCommand::Shared render_phong(VertexArrayObject::Shared vao, glm::mat4 mode
 RenderCommand::Shared render_flat(VertexArrayObject::Shared vao, glm::mat4 model) {
 	auto command = RenderCommand::alloc();
 	command->uniforms[UniformType::MODEL_MATRIX] = Uniform::alloc(model);
-	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->viewMatrix());
-	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(projection);
+	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->transform()->viewMatrix());
+	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(camera->projection());
 	command->uniforms[UniformType::SPECULAR_COLOR] = Uniform::alloc(glm::vec4(1.0, 1.0, 1.0, 1.0));
 	command->uniforms[UniformType::DIFFUSE_COLOR] = Uniform::alloc(glm::vec4(0.5, 0.5, 0.5, 1.0));
 	command->uniforms[UniformType::AMBIENT_COLOR] = Uniform::alloc(glm::vec4(0.2, 0.2, 0.2, 1.0));
@@ -179,8 +163,8 @@ RenderCommand::Shared render_flat(VertexArrayObject::Shared vao, glm::mat4 model
 RenderCommand::Shared render_axis(const VertexArrayObject::Shared& vao, const glm::vec3& color) {
 	auto command = RenderCommand::alloc();
 	command->uniforms[UniformType::MODEL_MATRIX] = Uniform::alloc(glm::mat4(1.0));
-	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->viewMatrix());
-	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(projection);
+	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->transform()->viewMatrix());
+	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(camera->projection());
 	command->uniforms[UniformType::DIFFUSE_COLOR] = Uniform::alloc(color);
 	command->enables.push_back(GL_DEPTH_TEST);
 	command->shader = flatShader;
@@ -200,8 +184,8 @@ std::vector<RenderCommand::Shared> render_terrain(Terrain::Shared terrain) {
 	auto commands = std::vector<RenderCommand::Shared>();
 	auto command = RenderCommand::alloc();
 	command->uniforms[UniformType::MODEL_MATRIX] = Uniform::alloc(terrain->transform()->matrix());
-	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->viewMatrix());
-	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(projection);
+	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->transform()->viewMatrix());
+	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(camera->projection());
 	command->uniforms[UniformType::LIGHT_POSITION0] = Uniform::alloc(glm::vec3(0.0, 10.0, 10.0));
 	command->uniforms[UniformType::TEXTURE_SAMPLER0] = Uniform::alloc(0);
 	command->uniforms[UniformType::TEXTURE_SAMPLER1] = Uniform::alloc(1);
@@ -242,8 +226,8 @@ void update_view() {
 	auto size = window->bufferSize();
 	// update viewport size
 	viewport->resize(0, 0, size.x, size.y);
-	// update projection
-	projection = glm::perspective(FIELD_OF_VIEW, float32_t(size.x) / float32_t(size.y), NEAR_PLANE, FAR_PLANE);
+	// update aspect ratio
+	camera->setAspect(float32_t(size.x) / float32_t(size.y));
 }
 
 void deserialize_frame(StreamBuffer::Shared stream) {
@@ -354,7 +338,7 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 	return std::make_tuple(from, to, t);
 }
 
-void process_frame(std::time_t now) {
+void process_frame(std::time_t now, std::time_t last) {
 
 	// update viewport and projection
 	update_view();
@@ -380,8 +364,14 @@ void process_frame(std::time_t now) {
 		return;
 	}
 
+	// update camera
+	camera->update(now - last);
+
 	// interpolate frame
 	auto frame = interpolate(a, b, t);
+
+	auto RAND_PLAYER = frame->players().begin()->second;
+	camera->follow(RAND_PLAYER);
 
 	// clear buffers
 	glClearColor(0.137f, 0.137f, 0.137f, 1.0f);
@@ -397,7 +387,6 @@ void process_frame(std::time_t now) {
 		auto terrain = iter.second;
 		Renderer::render(render_terrain(terrain));
 	}
-
 
 	// draw players
 	for (auto iter : frame->players()) {
@@ -415,36 +404,9 @@ void load_viewport() {
 }
 
 void load_camera() {
-	camera = Transform::alloc();
-	camera->setTranslation(glm::normalize(glm::vec3(0, 1, 1)) * DEFAULT_DISTANCE);
-	camera->rotateLocal(-M_PI/4.0, glm::vec3(1, 0, 0));
-}
-
-glm::vec3 mouse_to_world(glm::vec2 position) {
-	auto mvp = projection * camera->viewMatrix();
-	auto mvpInverse = glm::inverse(mvp);
-	// map window coords to range [0 .. 1]
-	// TODO: fix for high DPI?
 	auto size = window->size();
-	auto nx = position.x / size.x;
-	auto ny = (size.y - position.y) / size.y;
-	auto nz = 0.0;
-	// map to range of [-1 .. 1]
-	auto input = glm::vec4(
-		(nx * 2.0) - 1.0,
-		(ny * 2.0) - 1.0,
-		(nz * 2.0) - 1.0,
-		1.0);
-	auto output = mvpInverse * input;
-	if (output.w == 0.0) {
-		LOG_ERROR("w == 0.0");
-		return glm::vec3();
-	}
-	auto world = glm::vec3(
-		output.x / output.w,
-		output.y / output.w,
-		output.z / output.w);
-	return glm::normalize(world - camera->translation());
+	camera = Camera::alloc(float32_t(size.x) / float32_t(size.y));
+	camera->transform()->rotateLocal(-M_PI/4.0, glm::vec3(1, 0, 0));
 }
 
 Input::Shared move_to_click(
@@ -452,8 +414,9 @@ Input::Shared move_to_click(
 	const std::map<Button, ButtonState>& mouseState,
 	const std::map<Key, KeyState>& keyboardState) {
 	if (event.button == Button::LEFT) {
-		auto direction = mouse_to_world(event.position);
-		auto origin = camera->translation();
+		auto size = window->size();
+		auto direction = camera->mouseToWorld(event.position, size.x, size.y);
+		auto origin = camera->transform()->translation();
 		auto intersection = environment->intersect(direction, origin);
 		if (intersection.hit) {
 			auto input = Input::alloc(InputType::MOVE_TO);
@@ -470,8 +433,9 @@ Input::Shared move_to_hold(
 	const std::map<Key, KeyState>& keyboardState) {
 	auto button = get(mouseState, Button::LEFT);
 	if (button == ButtonState::DOWN) {
-		auto direction = mouse_to_world(event.position);
-		auto origin = camera->translation();
+		auto size = window->size();
+		auto direction = camera->mouseToWorld(event.position, size.x, size.y);
+		auto origin = camera->transform()->translation();
 		auto intersection = environment->intersect(direction, origin);
 		if (intersection.hit) {
 			auto input = Input::alloc(InputType::MOVE_TO);
@@ -489,12 +453,7 @@ Input::Shared rotate_camera(
 	// rotate with mouse button
 	auto button = get(mouseState, Button::RIGHT);
 	if (button == ButtonState::DOWN) {
-		float32_t xAngle = event.delta.x * X_FACTOR * (M_PI / 180.0);
-		float32_t yAngle = event.delta.y * Y_FACTOR * (M_PI / 180.0);
-		camera->setTranslation(glm::vec3(0, 0, 0));
-		camera->rotateGlobal(xAngle, glm::vec3(0, 1, 0));
-		camera->rotateLocal(yAngle, glm::vec3(1, 0, 0));
-		camera->translateLocal(glm::vec3(0, 0, distance));
+		camera->rotate(event.delta);
 	}
 	return nullptr;
 }
@@ -503,12 +462,8 @@ Input::Shared zoom_camera(
 	const MouseScrollEvent& event,
 	const std::map<Button, ButtonState>& mouseState,
 	const std::map<Key, KeyState>& keyboardState) {
-	// translate camera
-	float32_t delta = (event.delta * -SCROLL_FACTOR);
-	distance += delta;
-	distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
-	camera->setTranslation(glm::vec3(0, 0, 0));
-	camera->translateLocal(glm::vec3(0, 0, distance));
+	// zoom camera
+	camera->zoom(event.delta);
 	return nullptr;
 }
 
@@ -586,6 +541,7 @@ Input::Shared jump(
 	// if (event.type == KeyEvent::PRESS) {
 	// 	return Input::alloc(InputType::JUMP);
 	// }
+
 	return nullptr;
 }
 
@@ -599,18 +555,17 @@ Input::Shared save_terrain(
 		return nullptr;
 	}
 
-	// save env
-	for (auto iter : environment->terrain()) {
-		auto id = iter.first;
-		auto terrain = iter.second;
-		LOG_INFO("Saving " << id << "-terrain.bin");
-		auto name = id + "-terrain.bin";
-		std::ofstream file(name, std::ios::binary);
-		auto stream = StreamBuffer::alloc();
-		stream << terrain;
-		auto data = &stream->buffer()[0];
-		file.write((const char*)(data), stream->size());
-		file.close();
+	if (event.type == KeyEvent::PRESS) {
+		// save terrain
+		for (auto iter : environment->terrain()) {
+			auto id = iter.first;
+			auto terrain = iter.second;
+			LOG_INFO("Saving " << "terrain_" << id << ".bin");
+			std::string filename = "terrain_" + std::to_string(id) + ".bin";
+			auto stream = StreamBuffer::alloc();
+			stream << terrain;
+			stream->writeToFile(filename);
+		}
 	}
 
 	return nullptr;
@@ -665,12 +620,14 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
+	std::time_t last = Time::timestamp();
+
 	while (!window->shouldClose() && !quit) {
 
 		std::time_t now = Time::timestamp();
 
 		// process the frame
-		process_frame(now);
+		process_frame(now, last);
 
 		// poll for messages
 		auto messages = client->poll();
@@ -695,6 +652,8 @@ int main(int argc, char** argv) {
 		if (quit) {
 			break;
 		}
+
+		last = now;
 	}
 
 	// attempt to disconnect gracefully

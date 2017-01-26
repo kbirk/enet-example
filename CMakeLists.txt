@@ -34,6 +34,7 @@ include_directories(${SDL2_INCLUDE_DIR})
 
 # Add source files
 set(client_sources
+	"src/game/Camera"
 	"src/game/Environment"
 	"src/game/Frame"
 	"src/game/Idle"

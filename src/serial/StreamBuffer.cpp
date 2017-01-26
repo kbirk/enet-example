@@ -2,6 +2,8 @@
 
 #include "serial/Serialization.h"
 
+#include <fstream>
+
 StreamBuffer::Shared StreamBuffer::alloc(size_t numBytes) {
 	return std::make_shared<StreamBuffer>(numBytes);
 }
@@ -262,4 +264,11 @@ void StreamBuffer::read(glm::quat& data) {
 	read(data.y);
 	read(data.z);
 	read(data.w);
+}
+
+void StreamBuffer::writeToFile(const std::string& path) const {
+	const uint8_t* data = &buffer_[0];
+	std::ofstream file(path, std::ios::binary);
+	file.write((const char*)(data), size());
+	file.close();
 }
