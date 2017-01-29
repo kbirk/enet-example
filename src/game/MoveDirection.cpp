@@ -6,7 +6,7 @@
 #include "game/StateType.h"
 #include "time/Time.h"
 
-const float32_t PLAYER_SPEED = 5;
+const float32_t PLAYER_SPEED = 5.0;
 
 MoveDirection::Shared MoveDirection::alloc(const Input::Shared& input) {
 	return std::make_shared<MoveDirection>(input);
@@ -42,17 +42,9 @@ State::Shared MoveDirection::handleInput(const Input::Shared& input) {
 }
 
 State::Shared MoveDirection::update(Player::Shared& player, Environment::Shared env, std::time_t dt) {
-	auto fdt = dt / float64_t(Time::seconds(1));
+	auto fdt = Time::toSeconds(dt);
 	auto translation = direction_ * fdt * PLAYER_SPEED;
-	// intersect with terrain
-	auto intersection = env->intersect(
-		glm::vec3(0, 1, 0),
-		translation + player->transform()->translation(),
-		false,
-		false);
-	if (intersection.hit) {
-		player->transform()->setTranslation(intersection.position);
-	}
+	player->moveAlong(translation, env);
 	return nullptr;
 }
 

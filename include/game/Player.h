@@ -13,13 +13,16 @@ class Player : public std::enable_shared_from_this<Player> {
 	public:
 
 		typedef std::shared_ptr<Player> Shared;
-		static Shared alloc();
-		static Shared alloc(Transform::Shared, State::Shared);
+		static Shared alloc(uint32_t);
+		static Shared alloc(uint32_t, Transform::Shared, State::Shared);
 
-		Player();
-		Player(Transform::Shared, State::Shared);
+		Player(uint32_t);
+		Player(uint32_t, Transform::Shared, State::Shared);
 
+		uint32_t id() const;
 		void update(Environment::Shared, std::time_t);
+
+		void moveAlong(glm::vec3 translation, Environment::Shared);
 
 		Transform::Shared transform();
 		StateMachine::Shared state();
@@ -34,6 +37,7 @@ class Player : public std::enable_shared_from_this<Player> {
 		// prevent assignment
 		Player& operator= (const Player&);
 
+		uint32_t id_;
 		Transform::Shared transform_;
 		StateMachine::Shared state_;
 };

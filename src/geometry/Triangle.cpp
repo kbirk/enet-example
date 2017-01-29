@@ -1,52 +1,57 @@
 #include "geometry/Triangle.h"
 
+#include <glm/glm.hpp>
+#include <glm/gtx/intersect.hpp>
+
 Triangle::Shared Triangle::alloc() {
 	return std::make_shared<Triangle>();
 }
 
-Triangle::Shared Triangle::alloc(const glm::vec3& n, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2) {
-	return std::make_shared<Triangle>(n, p0, p1, p2);
+Triangle::Shared Triangle::alloc(const glm::vec3& n, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+	return std::make_shared<Triangle>(n, a, b, c);
 }
 
-Triangle::Shared Triangle::alloc(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2) {
-	return std::make_shared<Triangle>(p0, p1, p2);
+Triangle::Shared Triangle::alloc(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) {
+	return std::make_shared<Triangle>(a, b, c);
 }
 
 Triangle::Triangle()
-	: points_(3, glm::vec3(0, 0, 0))
+	: a_(0, 0, 0)
+	, b_(0, 0, 0)
+	, c_(0, 0, 0)
 	, normal_(0, 0, 0)
 	, centroid_(0, 0, 0)
 	, radius_(0) {
 }
 
-Triangle::Triangle(const glm::vec3& n, const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2)
-	: normal_(n)
-	, centroid_((1.0 / 3.0) * (p0 + p1 + p2)) {
-	points_.push_back(p0);
-	points_.push_back(p1);
-	points_.push_back(p2);
+Triangle::Triangle(const glm::vec3& n, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+	: a_(a)
+	, b_(b)
+	, c_(c)
+	, normal_(n)
+	, centroid_((1.0 / 3.0) * (a + b + c)) {
 	calcRadius();
 }
 
-Triangle::Triangle(const glm::vec3& p0, const glm::vec3& p1, const glm::vec3& p2)
-	: normal_(glm::normalize(glm::cross(p1 - p0, p2 - p0)))
-	, centroid_((1.0 / 3.0) * (p0 + p1 + p2)) {
-	points_.push_back(p0);
-	points_.push_back(p1);
-	points_.push_back(p2);
+Triangle::Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+	: a_(a)
+	, b_(b)
+	, c_(c)
+	, normal_(glm::normalize(glm::cross(b - a, c - a)))
+	, centroid_((1.0 / 3.0) * (a + b + c)) {
 	calcRadius();
 }
 
 const glm::vec3& Triangle::a() const {
-	return points_[0];
+	return a_;
 }
 
 const glm::vec3& Triangle::b() const {
-	return points_[1];
+	return b_;
 }
 
 const glm::vec3& Triangle::c() const {
-	return points_[2];
+	return c_;
 }
 
 const glm::vec3& Triangle::normal() const {
@@ -62,15 +67,15 @@ float32_t Triangle::radius() const {
 }
 
 void Triangle::recalculate() {
-	normal_ = glm::normalize(glm::cross(points_[1] - points_[0], points_[2] - points_[0]));
-	centroid_ = (1.0 / 3.0) * (points_[0] + points_[1] + points_[2]);
+	normal_ = glm::normalize(glm::cross(b_ - a_, c_ - a_));
+	centroid_ = (1.0 / 3.0) * (a_ + b_ + c_);
 	calcRadius();
 }
 
 void Triangle::calcRadius() {
-	auto a = glm::length(points_[0] - centroid_);
-	auto b = glm::length(points_[1] - centroid_);
-	auto c = glm::length(points_[2] - centroid_);
+	auto a = glm::length(a_ - centroid_);
+	auto b = glm::length(b_ - centroid_);
+	auto c = glm::length(c_ - centroid_);
 	radius_ = std::max(std::max(a, b), c);
 }
 
@@ -80,6 +85,24 @@ Intersection Triangle::intersect(
 	bool ignoreBehindRay,
 	bool backFaceCull) const {
 
+	glm::vec3 bary;
+	//
+	// if (glm::intersectLineTriangle(origin, ray, a_, b_, c_, bary)) {
+	// 	auto pos = origin + ray * bary.z;
+	// 	return Intersection(pos, normal_, bary.z);
+	// }
+
+	if (glm::intersectRayTriangle(origin, ray, a_, b_, c_, bary)) {
+		auto pos = origin + ray * bary.z;
+		return Intersection(pos, normal_, bary.z);
+	}
+	if (glm::intersectRayTriangle(origin, -ray, a_, c_, b_, bary)) {
+		auto pos = origin + -ray * bary.z;
+		return Intersection(pos, normal_, bary.z);
+	}
+	return Intersection();
+
+	/*
 	// compute ray/plane intersection
 	float32_t dn = glm::dot(ray, normal_);
 	if (dn == 0 || (backFaceCull && dn > 0)) {
@@ -87,7 +110,7 @@ Intersection Triangle::intersect(
 		return Intersection();
 	}
 
-	float32_t t = glm::dot(points_[0] - origin, normal_) * (1 / dn);
+	float32_t t = glm::dot(a_ - origin, normal_) / dn;
 	if (ignoreBehindRay && t < 0) {
 		// plane is behind ray
 		return Intersection();
@@ -100,13 +123,14 @@ Intersection Triangle::intersect(
 		return Intersection();
 	}
 	return Intersection(intersection, normal_, t);
+	*/
 }
 
 bool Triangle::contains(const glm::vec3& point) const {
 	// compute barycentric coords
-	float32_t totalAreaDiv = 1.0 / glm::dot(glm::cross(points_[1]-points_[0], points_[2]-points_[0]), normal_);
-	float32_t u = glm::dot(glm::cross(points_[2]-points_[1], point - points_[1]), normal_) * totalAreaDiv;
-	float32_t v = glm::dot(glm::cross(points_[0]-points_[2], point - points_[2]), normal_) * totalAreaDiv;
+	float32_t totalAreaDiv = 1.0 / glm::dot(glm::cross(b_ - a_, c_ - a_), normal_);
+	float32_t u = glm::dot(glm::cross(c_ - b_, point - b_), normal_) * totalAreaDiv;
+	float32_t v = glm::dot(glm::cross(a_ - c_, point - c_), normal_) * totalAreaDiv;
 	// reject if outside triangle
 	if (u < 0 || v < 0 || u + v > 1) {
 		return false;
@@ -137,8 +161,21 @@ glm::vec3 Triangle::closestPointTo(const glm::vec3& point) const {
 }
 
 glm::vec3 Triangle::closestPointOnEdge(uint32_t edgeIndex, const glm::vec3& point) const {
-	auto a = points_[edgeIndex];
-	auto b = points_[(edgeIndex + 1) % 3];
+	glm::vec3 a, b;
+	switch (edgeIndex) {
+		case 0:
+			a = a_;
+			b = b_;
+			break;
+		case 1:
+			a = b_;
+			b = c_;
+			break;
+		default:
+			a = c_;
+			b = a_;
+			break;
+	}
 	auto ab = b - a;
 	// project c onto ab, computing parameterized position d(t) = a + t*(b * a)
 	float32_t t = glm::dot(point - a, ab) / glm::dot(ab,  ab);
@@ -155,9 +192,9 @@ glm::vec3 Triangle::closestPointOnEdge(uint32_t edgeIndex, const glm::vec3& poin
 
 bool operator== (const Triangle::Shared& a, const Triangle::Shared& b) {
 	return
-		a->points_[0] == b->points_[0] &&
-		a->points_[1] == b->points_[1] &&
-		a->points_[2] == b->points_[2] &&
+		a->a_ == b->a_ &&
+		a->b_ == b->b_ &&
+		a->c_ == b->c_ &&
 		a->normal_ == b->normal_;
 }
 

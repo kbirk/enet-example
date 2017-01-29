@@ -8,7 +8,7 @@
 namespace Game {
 
 	// num server steps per sec
-	const uint32_t STEPS_PER_SEC = 20;
+	const uint32_t STEPS_PER_SEC = 10;
 
 	// step duration in microseconds
 	const std::time_t STEP_DURATION = (1.0 / STEPS_PER_SEC) * 1000000;

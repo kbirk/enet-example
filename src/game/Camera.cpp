@@ -6,12 +6,11 @@ const float32_t SCROLL_DEFAULT_DISTANCE = 10.0f;
 const float32_t SCROLL_FACTOR = 5.0f;
 const float32_t SCROLL_MAX_DISTANCE = SCROLL_DEFAULT_DISTANCE * 10.0;
 const float32_t SCROLL_MIN_DISTANCE = 0.0;
-
 const float32_t ROTATE_X_FACTOR = -1.0;
 const float32_t ROTATE_Y_FACTOR = -2.0;
-
-const float32_t EASING_FACTOR = 10.0;
-
+const float32_t ZOOM_EASING_FACTOR = 10.0;
+const float32_t ROTATE_EASING_FACTOR = 10.0;
+const float32_t FOLLOW_EASING_FACTOR = 5.0;
 const float32_t FIELD_OF_VIEW = 60.0f / (180.0f / M_PI);
 const float32_t NEAR_PLANE = 0.1f;
 const float32_t FAR_PLANE = 10000.0f;
@@ -41,6 +40,11 @@ Camera::Camera(float32_t aspect, Transform::Shared transform)
 
 void Camera::update(std::time_t dt) {
 
+	if (target_) {
+		// update target position before resetting camera translation
+		updateTarget(dt);
+	}
+
 	// set camera at origin
 	transform_->setTranslation(glm::vec3(0, 0, 0));
 
@@ -52,7 +56,8 @@ void Camera::update(std::time_t dt) {
 
 	// where to center camera
 	if (target_) {
-		transform_->setTranslation(target_->transform()->translation());
+		// appy target following
+		transform_->setTranslation(targetPosition_);
 	} else {
 		transform_->setTranslation(glm::vec3(0, 0, 0));
 	}
@@ -66,13 +71,13 @@ void Camera::updateRotation(std::time_t dt) {
 		return;
 	}
 	// update velocity
-	auto fdt = dt / float32_t(Time::seconds(1));
+	auto fdt = Time::toSeconds(dt);
 	auto delta = rotationVelocity_ * fdt;
 	// rotate around origin
 	transform_->rotateGlobal(delta.x, glm::vec3(0, 1, 0));
 	transform_->rotateLocal(delta.y, glm::vec3(1, 0, 0));
 	// decrement velocity
-	auto friction = delta * EASING_FACTOR;
+	auto friction = delta * ROTATE_EASING_FACTOR;
 	rotationVelocity_ -= friction;
 }
 
@@ -81,12 +86,12 @@ void Camera::updateZoom(std::time_t dt) {
 		return;
 	}
 	// update distance
-	auto fdt = dt / float32_t(Time::seconds(1));
+	auto fdt = Time::toSeconds(dt);
 	auto delta = zoomVelocity_ * fdt;
 	distance_ += delta;
 	distance_ = std::min(std::max(distance_, SCROLL_MIN_DISTANCE), SCROLL_MAX_DISTANCE);
 	// decrement velocity
-	auto friction = delta * EASING_FACTOR;
+	auto friction = delta * ZOOM_EASING_FACTOR;
 	if ((zoomVelocity_ > 0 && zoomVelocity_ < friction) ||
 		(zoomVelocity_ < 0 && zoomVelocity_ > friction)) {
 		zoomVelocity_ = 0;
@@ -95,8 +100,26 @@ void Camera::updateZoom(std::time_t dt) {
 	}
 }
 
+void Camera::updateTarget(std::time_t dt) {
+	auto diff = target_->transform()->translation() - targetPosition_;
+	auto fdt = Time::toSeconds(dt) * FOLLOW_EASING_FACTOR;
+	auto dist = std::min(glm::length(diff), float32_t(fdt));
+	if (dist < M_EPSILON) {
+		return;
+	}
+	//auto direction = glm::normalize(diff);
+	auto delta = diff * dist;
+	// update position
+	targetPosition_ += delta;
+}
+
 void Camera::follow(Player::Shared target) {
+	if (target_ && target_->id() == target->id()) {
+		target_ = target;
+		return;
+	}
 	target_ = target;
+	targetPosition_ = target_->transform()->translation();
 }
 
 void Camera::setPerspective(float32_t fov, float32_t aspect, float32_t near, float32_t far) {

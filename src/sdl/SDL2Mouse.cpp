@@ -52,7 +52,7 @@ void SDL2Mouse::handleMouseButtonEvent(const SDL_Event* sdl, const std::map<Key,
 		auto type = translateButtonEvent(sdl);
 		auto x = sdl->button.x;
 		auto y = sdl->button.y;
-		auto timestamp = Time::milliseconds(sdl->button.timestamp);
+		auto timestamp = Time::fromMilliseconds(sdl->button.timestamp);
 		auto event = MouseButtonEvent(type, button, glm::vec2(x, y), timestamp);
 		// update state
 		updateState(event);
@@ -67,7 +67,7 @@ void SDL2Mouse::handleMouseMoveEvent(const SDL_Event* sdl, const std::map<Key, K
 	auto dy = sdl->motion.yrel;
 	auto x = sdl->motion.x;
 	auto y = sdl->motion.y;
-	auto timestamp = Time::milliseconds(sdl->motion.timestamp);
+	auto timestamp = Time::fromMilliseconds(sdl->motion.timestamp);
 	auto event = MouseMoveEvent(glm::vec2(x, y), glm::vec2(dx, dy), timestamp);
 	// dispatch event / state
 	dispatchEvent(event, state_, state);
@@ -76,7 +76,7 @@ void SDL2Mouse::handleMouseMoveEvent(const SDL_Event* sdl, const std::map<Key, K
 void SDL2Mouse::handleMouseScrollEvent(const SDL_Event* sdl, const std::map<Key, KeyState>& state) {
 	// get event
 	auto delta = sdl->wheel.y;
-	auto timestamp = Time::milliseconds(sdl->wheel.timestamp);
+	auto timestamp = Time::fromMilliseconds(sdl->wheel.timestamp);
 	auto event = MouseScrollEvent(delta, timestamp);
 	// dispatch event / state
 	dispatchEvent(event, state_, state);

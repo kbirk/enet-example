@@ -51,7 +51,7 @@ Input::Shared deserialize_input(StreamBuffer::Shared stream) {
 
 void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last) {
 	auto pi2 = 2.0 * M_PI;
-	auto factor = now / float64_t(Time::seconds(2));
+	auto factor = Time::toSeconds(now) * 0.25;
 	auto angle = std::fmod(factor * pi2, pi2);
 	// LOG_DEBUG("Setting angle to: " << angle << " radians for time of: " << now);
 	auto axis = glm::vec3(1, 1, 1);
@@ -61,16 +61,8 @@ void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last
 		if (id > server->numClients()) {
 			// rotate and translate non-clients
 			player->transform()->setRotation(angle, axis);
-			auto translation = glm::vec3(std::sin(angle) * 3.0, 0.0, 0.0);
-			// intersect with terrain
-			auto intersection = environment->intersect(
-				glm::vec3(0, 1, 0),
-				translation,
-				false,
-				false);
-			if (intersection.hit) {
-				player->transform()->setTranslation(intersection.position);
-			}
+			auto position = glm::vec3(std::sin(angle) * 5.0, 0.1, 0.1);
+			player->moveAlong(position - player->transform()->translation(), environment);
 		}
 		// update player state
 		player->update(environment, now - last);
@@ -87,7 +79,8 @@ void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last
 void load_environment() {
 	// create terrain
 	auto terrain = Terrain::alloc();
-	terrain->generateGeometry(512, 512, 0.02, 2.0, 0.01);
+	// terrain->generateGeometry(512, 512, 0.02, 2.0, 0.01);
+	terrain->generateGeometry(32, 32, 0.32, 2.0, 0.16);
 	terrain->transform()->translateLocal(glm::vec3(0, -3, 0));
 	terrain->transform()->setScale(3.0);
 	// create env
@@ -107,7 +100,8 @@ int main(int argc, char** argv) {
 
 	frame = Frame::alloc();
 	// TEMP: high enough ID not to conflict with a client id
-	frame->addPlayer(256, Player::alloc());
+	uint32_t fakeID = 256;
+	frame->addPlayer(fakeID, Player::alloc(fakeID));
 
 	server = Server::alloc();
 	if (server->start(PORT)) {
@@ -128,25 +122,27 @@ int main(int argc, char** argv) {
 		// process events
 		for (auto msg : messages) {
 
+			uint32_t id = msg->id();
+
 			switch (msg->type()) {
 
 				case MessageType::CONNECT:
-					LOG_DEBUG("Connection from client_" << msg->id() << " received");
-					frame->addPlayer(msg->id(), Player::alloc());
+					LOG_DEBUG("Connection from client_" << id << " received");
+					frame->addPlayer(id, Player::alloc(id));
 					break;
 
 				case MessageType::DISCONNECT:
 
-					LOG_DEBUG("Connection from client_" << msg->id() << " lost");
-					frame->removePlayer(msg->id());
+					LOG_DEBUG("Connection from client_" << id << " lost");
+					frame->removePlayer(id);
 					break;
 
 				case MessageType::DATA:
 
-					LOG_DEBUG("Message received from client `" << msg->id() << "`");
+					LOG_DEBUG("Message received from client `" << id << "`");
 					auto input = deserialize_input(msg->stream());
 					auto players = frame->players();
-					auto player = players[msg->id()];
+					auto player = players[id];
 					process_input(player, input);
 					break;
 			}

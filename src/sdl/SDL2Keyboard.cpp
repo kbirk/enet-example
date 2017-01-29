@@ -95,7 +95,7 @@ void SDL2Keyboard::handleKeyboardEvent(const SDL_Event* sdl, const std::map<Butt
 		// get event
 		auto key = iter->second;
 		auto type = translateKeyEvent(sdl);
-		auto timestamp = Time::milliseconds(sdl->key.timestamp);
+		auto timestamp = Time::fromMilliseconds(sdl->key.timestamp);
 		auto event = KeyboardEvent(type, key, timestamp);
 		// update state
 		updateState(event);

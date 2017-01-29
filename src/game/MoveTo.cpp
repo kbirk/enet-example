@@ -44,22 +44,14 @@ State::Shared MoveTo::handleInput(const Input::Shared& input) {
 State::Shared MoveTo::update(Player::Shared& player, Environment::Shared env, std::time_t dt) {
 	auto diff = position_ - player->transform()->translation();
 	auto dist = glm::length(diff);
-	auto fdt = dt / float32_t(Time::seconds(1));
-	dist = std::min(fdt * PLAYER_SPEED, dist);
+	auto fdt = Time::toSeconds(dt);
+	dist = std::min(float32_t(fdt) * PLAYER_SPEED, dist);
 	if (dist < M_EPSILON) {
 		return Idle::alloc(nullptr);
 	}
 	auto direction = glm::normalize(diff);
 	auto translation = direction * dist;
-	// intersect with terrain
-	auto intersection = env->intersect(
-		glm::vec3(0, 1, 0),
-		translation + player->transform()->translation(),
-		false,
-		false);
-	if (intersection.hit) {
-		player->transform()->setTranslation(intersection.position);
-	}
+	player->moveAlong(translation, env);
 	return nullptr;
 }
 

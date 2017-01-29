@@ -118,7 +118,7 @@ bool Server::stop() {
 			}
 		}
 		// check timeout
-		if (Time::timestamp() - timestamp > Time::milliseconds(CONNECTION_TIMEOUT_MS)) {
+		if (Time::timestamp() - timestamp > Time::fromMilliseconds(CONNECTION_TIMEOUT_MS)) {
 			LOG_ERROR("Disconnection was not acknowledged by server, shutdown forced");
 			break;
 		}

@@ -36,7 +36,7 @@
 
 const std::string HOST = "localhost";
 const uint32_t PORT = 7000;
-const std::time_t DISCONNECT_TIMEOUT = Time::seconds(5);
+const std::time_t DISCONNECT_TIMEOUT = Time::fromSeconds(5);
 
 bool quit = false;
 
@@ -413,7 +413,8 @@ Input::Shared move_to_click(
 	const MouseButtonEvent& event,
 	const std::map<Button, ButtonState>& mouseState,
 	const std::map<Key, KeyState>& keyboardState) {
-	if (event.button == Button::LEFT) {
+	if (event.type == ButtonEvent::CLICK &&
+		event.button == Button::LEFT) {
 		auto size = window->size();
 		auto direction = camera->mouseToWorld(event.position, size.x, size.y);
 		auto origin = camera->transform()->translation();
@@ -577,7 +578,8 @@ void load_environment() {
 		"resources/images/grass.png",
 		"resources/images/dgrass.png",
 		"resources/images/dirt.png");
-	terrain->generateGeometry(512, 512, 0.02, 2.0, 0.01);
+	//terrain->generateGeometry(512, 512, 0.02, 2.0, 0.01);
+	terrain->generateGeometry(32, 32, 0.32, 2.0, 0.16);
 	terrain->transform()->translateLocal(glm::vec3(0, -3, 0));
 	terrain->transform()->setScale(3.0);
 	terrain->generateVAO();

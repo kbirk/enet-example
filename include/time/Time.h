@@ -22,9 +22,16 @@ namespace Time {
 	/**
 	 * Converts the arguments to microseconds.
 	 */
-	std::time_t minutes(float64_t);
-	std::time_t seconds(float64_t);
-	std::time_t milliseconds(float64_t);
+	std::time_t fromMinutes(float64_t);
+	std::time_t fromSeconds(float64_t);
+	std::time_t fromMilliseconds(float64_t);
+
+	/**
+	 * Converts the arguments from microseconds to the specified type.
+	 */
+	float64_t toMinutes(std::time_t);
+	float64_t toSeconds(std::time_t);
+	float64_t toMilliseconds(std::time_t);
 
 	/**
 	 * Format microsecond into a pretty string.

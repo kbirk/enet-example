@@ -62,7 +62,9 @@ class Triangle {
 		// prevent assignment
 		Triangle& operator= (const Triangle&);
 
-		std::vector<glm::vec3> points_;
+		glm::vec3 a_;
+		glm::vec3 b_;
+		glm::vec3 c_;
 		glm::vec3 normal_;
 		glm::vec3 centroid_;
 		float32_t radius_;

@@ -107,7 +107,7 @@ bool Client::disconnect() {
 			break;
 		}
 		// check for timeout
-		if (Time::timestamp() - timestamp > Time::milliseconds(CONNECTION_TIMEOUT_MS)) {
+		if (Time::timestamp() - timestamp > Time::fromMilliseconds(CONNECTION_TIMEOUT_MS)) {
 			break;
 		}
 	}

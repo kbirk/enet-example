@@ -20,16 +20,28 @@ namespace Time {
 		std::this_thread::sleep_for(std::chrono::microseconds(duration));
 	}
 
-	std::time_t minutes(float64_t minutes) {
+	std::time_t fromMinutes(float64_t minutes) {
 		return minutes * 1000000 * 60;
 	}
 
-	std::time_t seconds(float64_t seconds) {
+	std::time_t fromSeconds(float64_t seconds) {
 		return seconds * 1000000;
 	}
 
-	std::time_t milliseconds(float64_t milliseconds) {
+	std::time_t fromMilliseconds(float64_t milliseconds) {
 		return milliseconds * 1000;
+	}
+
+	float64_t toMinutes(std::time_t t) {
+		return t / (1000000.0 * 60.0);
+	}
+
+	float64_t toSeconds(std::time_t t) {
+		return t / 1000000.0;
+	}
+
+	float64_t toMilliseconds(std::time_t t) {
+		return t / 1000.0;
 	}
 
 	std::string format(std::time_t microseconds) {

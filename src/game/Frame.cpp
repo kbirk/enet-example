@@ -47,7 +47,7 @@ StreamBuffer::Shared& operator>> (StreamBuffer::Shared& stream, Frame::Shared& f
 	for (uint32_t i = 0; i < size; i++) {
 		uint32_t id;
 		stream >> id; // id
-		auto player = Player::alloc();
+		auto player = Player::alloc(id);
 		stream >> player; // player
 		frame->players_[id] = player;
 	}

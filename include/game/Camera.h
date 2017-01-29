@@ -37,6 +37,7 @@ class Camera {
 
 		void updateRotation(std::time_t);
 		void updateZoom(std::time_t);
+		void updateTarget(std::time_t);
 
 		// prevent copy-construction
 		Camera(const Camera&);
@@ -45,6 +46,7 @@ class Camera {
 
 		Transform::Shared transform_;
 		Player::Shared target_;
+		glm::vec3 targetPosition_;
 		float32_t distance_;
 		float32_t zoomVelocity_;
 		glm::vec2 rotationVelocity_;
