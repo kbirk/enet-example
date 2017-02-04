@@ -42,38 +42,34 @@ void Transform::rotateGlobal(float32_t angle, const glm::vec3& axis) {
 }
 
 void Transform::rotateTo(const glm::vec3& target) {
-	auto diff = translation_ - target;
 
+	auto diff = target - translation_;
 	auto start = glm::normalize(-z());
 	auto dest = glm::normalize(diff);
+	float32_t dot = glm::dot(start, dest);
+	glm::vec3 axis;
+	glm::quat rotation;
 
-	float32_t cosTheta = glm::dot(start, dest);
-	glm::vec3 rotationAxis;
-
-	if (cosTheta < -1 + 0.001f) {
+	if (dot < -1 + M_EPSILON) {
 		// special case when vectors in opposite directions:
 		// there is no "ideal" rotation axis
 		// So guess one; any will do as long as it's perpendicular to start
-		rotationAxis = glm::cross(glm::vec3(0.0f, 0.0f, 1.0f), start);
-		if (glm::length2(rotationAxis) < 0.01) {
+		axis = glm::cross(glm::vec3(0.0f, 0.0f, 1.0f), start);
+		if (glm::length2(axis) < M_EPSILON) {
 			// bad luck, they were parallel, try again!
-			rotationAxis = glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), start);
+			axis = glm::cross(glm::vec3(1.0f, 0.0f, 0.0f), start);
 		}
-		rotationAxis = glm::normalize(rotationAxis);
-		rotation_ = glm::angleAxis(180.0f, rotationAxis);
+		axis = glm::normalize(axis);
+		rotation = glm::angleAxis(float32_t(M_PI), axis);
+	} else {
+		axis = glm::cross(start, dest);
+		axis = glm::normalize(axis);
+		rotation = glm::quat(dot, axis.x, axis.y, axis.z);
+		rotation = glm::normalize(rotation);
 	}
 
-	rotationAxis = glm::cross(start, dest);
-
-	float32_t s = sqrt((1.0 + cosTheta) * 2.0);
-	float32_t invs = 1.0 / s;
-
-	rotation_ = glm::quat(
-		s * 0.5f,
-		rotationAxis.x * invs,
-		rotationAxis.y * invs,
-		rotationAxis.z * invs
-	);
+	// rotate the transform
+	rotation_ = rotation_ * rotation;
 }
 
 void Transform::translateGlobal(const glm::vec3& t) {

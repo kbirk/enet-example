@@ -51,8 +51,10 @@ Input::Shared deserialize_input(StreamBuffer::Shared stream) {
 
 void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last) {
 	auto pi2 = 2.0 * M_PI;
-	auto factor = Time::toSeconds(now) * 0.25;
-	auto angle = std::fmod(factor * pi2, pi2);
+	auto rfactor = Time::toSeconds(now) * 0.5;
+	auto tfactor = Time::toSeconds(now) * 0.25;
+	auto angle = std::fmod(rfactor * pi2, pi2);
+	auto translation = glm::vec3(std::sin(std::fmod(tfactor * pi2, pi2)) * 8.0, 0, 5.0);
 	// LOG_DEBUG("Setting angle to: " << angle << " radians for time of: " << now);
 	auto axis = glm::vec3(1, 1, 1);
 	for (auto iter : frame->players()) {
@@ -61,8 +63,7 @@ void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last
 		if (id > server->numClients()) {
 			// rotate and translate non-clients
 			player->transform()->setRotation(angle, axis);
-			auto position = glm::vec3(std::sin(angle) * 5.0, 0.1, 0.1);
-			player->moveAlong(position - player->transform()->translation(), environment);
+			player->moveAlong(translation - player->transform()->translation(), environment);
 		}
 		// update player state
 		player->update(environment, now - last);

@@ -17,14 +17,14 @@ typedef double float64_t;
  * Define PI
  */
 #ifndef M_PI
-	#define M_PI 3.14159265358979323846
+	#define M_PI 3.14159265358979f
 #endif
 
 /**
  * Define EPSILON
  */
 #ifndef M_EPSILON
-	#define M_EPSILON 0.000001
+	#define M_EPSILON 0.000001f
 #endif
 
 /**

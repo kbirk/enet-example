@@ -4,6 +4,7 @@
 #include "game/Idle.h"
 #include "game/MoveTo.h"
 #include "game/StateType.h"
+#include "math/Common.h"
 #include "time/Time.h"
 
 const float32_t PLAYER_SPEED = 5.0;
@@ -44,6 +45,11 @@ State::Shared MoveDirection::handleInput(const Input::Shared& input) {
 State::Shared MoveDirection::update(Player::Shared& player, Environment::Shared env, std::time_t dt) {
 	auto fdt = Time::toSeconds(dt);
 	auto translation = direction_ * fdt * PLAYER_SPEED;
+	auto a = -player->transform()->z();
+	auto b = glm::normalize(translation);
+	auto angle = Math::signedAngle(a, b, glm::vec3(0, 1, 0));
+	auto nval = std::min(angle, angle * float32_t(fdt) * PLAYER_SPEED);
+	player->transform()->rotateGlobal(nval, glm::vec3(0, 1, 0));
 	player->moveAlong(translation, env);
 	return nullptr;
 }

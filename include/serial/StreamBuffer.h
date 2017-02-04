@@ -57,7 +57,9 @@ class StreamBuffer {
 		void read(float32_t&);
 		void read(float64_t&);
 		void read(std::string&);
-		// void read(std::time_t&);
+		#ifdef __APPLE__
+		void read(std::time_t&);
+		#endif
 		void read(glm::vec2&);
 		void read(glm::vec3&);
 		void read(glm::vec4&);

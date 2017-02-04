@@ -1,8 +1,5 @@
 #include "geometry/Triangle.h"
 
-#include <glm/glm.hpp>
-#include <glm/gtx/intersect.hpp>
-
 Triangle::Shared Triangle::alloc() {
 	return std::make_shared<Triangle>();
 }
@@ -85,24 +82,6 @@ Intersection Triangle::intersect(
 	bool ignoreBehindRay,
 	bool backFaceCull) const {
 
-	glm::vec3 bary;
-	//
-	// if (glm::intersectLineTriangle(origin, ray, a_, b_, c_, bary)) {
-	// 	auto pos = origin + ray * bary.z;
-	// 	return Intersection(pos, normal_, bary.z);
-	// }
-
-	if (glm::intersectRayTriangle(origin, ray, a_, b_, c_, bary)) {
-		auto pos = origin + ray * bary.z;
-		return Intersection(pos, normal_, bary.z);
-	}
-	if (glm::intersectRayTriangle(origin, -ray, a_, c_, b_, bary)) {
-		auto pos = origin + -ray * bary.z;
-		return Intersection(pos, normal_, bary.z);
-	}
-	return Intersection();
-
-	/*
 	// compute ray/plane intersection
 	float32_t dn = glm::dot(ray, normal_);
 	if (dn == 0 || (backFaceCull && dn > 0)) {
@@ -123,7 +102,6 @@ Intersection Triangle::intersect(
 		return Intersection();
 	}
 	return Intersection(intersection, normal_, t);
-	*/
 }
 
 bool Triangle::contains(const glm::vec3& point) const {
@@ -132,7 +110,7 @@ bool Triangle::contains(const glm::vec3& point) const {
 	float32_t u = glm::dot(glm::cross(c_ - b_, point - b_), normal_) * totalAreaDiv;
 	float32_t v = glm::dot(glm::cross(a_ - c_, point - c_), normal_) * totalAreaDiv;
 	// reject if outside triangle
-	if (u < 0 || v < 0 || u + v > 1) {
+	if (u < M_EPSILON || v < M_EPSILON || u + v > (1 + M_EPSILON)) {
 		return false;
 	}
 	return true;

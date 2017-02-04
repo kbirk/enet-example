@@ -33,12 +33,10 @@ void Player::moveAlong(glm::vec3 translation, Environment::Shared env) {
 	auto intersection = env->intersect(
 		glm::vec3(0, -1, 0),
 		origin,
-		false,
+		false,-
 		false);
 	if (intersection.hit) {
 		transform_->setTranslation(intersection.position);
-	} else {
-		LOG_INFO("MISSED TERRAIN WTF: " << glm::to_string(transform_->translation() + translation));
 	}
 }
 

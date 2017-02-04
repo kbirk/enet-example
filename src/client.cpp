@@ -166,7 +166,7 @@ RenderCommand::Shared render_axis(const VertexArrayObject::Shared& vao, const gl
 	command->uniforms[UniformType::VIEW_MATRIX] = Uniform::alloc(camera->transform()->viewMatrix());
 	command->uniforms[UniformType::PROJECTION_MATRIX] = Uniform::alloc(camera->projection());
 	command->uniforms[UniformType::DIFFUSE_COLOR] = Uniform::alloc(color);
-	command->enables.push_back(GL_DEPTH_TEST);
+	command->disables.push_back(GL_DEPTH_TEST);
 	command->shader = flatShader;
 	command->vao = vao;
 	return command;
@@ -379,9 +379,6 @@ void process_frame(std::time_t now, std::time_t last) {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	LOG_OPENGL("glClear");
 
-	// draw origin
-	Renderer::render(render_axes());
-
 	// draw terrain
 	for (auto iter : environment->terrain()) {
 		auto terrain = iter.second;
@@ -393,6 +390,9 @@ void process_frame(std::time_t now, std::time_t last) {
 		auto player = iter.second;
 		Renderer::render(render_phong(cube, player->transform()->matrix()));
 	}
+
+	// draw origin
+	Renderer::render(render_axes());
 
 	// swap back buffer
 	window->swapBuffers();
@@ -428,20 +428,25 @@ Input::Shared move_to_click(
 	return nullptr;
 }
 
+std::time_t last = 0;
 Input::Shared move_to_hold(
 	const MouseMoveEvent& event,
 	const std::map<Button, ButtonState>& mouseState,
 	const std::map<Key, KeyState>& keyboardState) {
 	auto button = get(mouseState, Button::LEFT);
 	if (button == ButtonState::DOWN) {
-		auto size = window->size();
-		auto direction = camera->mouseToWorld(event.position, size.x, size.y);
-		auto origin = camera->transform()->translation();
-		auto intersection = environment->intersect(direction, origin);
-		if (intersection.hit) {
-			auto input = Input::alloc(InputType::MOVE_TO);
-			input->emplace("position", intersection.position);
-			return input;
+		auto now = Time::timestamp();
+		if (now - last > Game::STEP_DURATION) {
+			auto size = window->size();
+			auto direction = camera->mouseToWorld(event.position, size.x, size.y);
+			auto origin = camera->transform()->translation();
+			auto intersection = environment->intersect(direction, origin);
+			if (intersection.hit) {
+				auto input = Input::alloc(InputType::MOVE_TO);
+				input->emplace("position", intersection.position);
+				last = now;
+				return input;
+			}
 		}
 	}
 	return nullptr;
@@ -561,7 +566,7 @@ Input::Shared save_terrain(
 		for (auto iter : environment->terrain()) {
 			auto id = iter.first;
 			auto terrain = iter.second;
-			LOG_INFO("Saving " << "terrain_" << id << ".bin");
+			LOG_INFO("saving " << "terrain_" << id << ".bin");
 			std::string filename = "terrain_" + std::to_string(id) + ".bin";
 			auto stream = StreamBuffer::alloc();
 			stream << terrain;

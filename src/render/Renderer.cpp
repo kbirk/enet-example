@@ -17,6 +17,11 @@ namespace Renderer {
 			glEnable(state);
 			LOG_OPENGL("glEnable");
 		}
+		// disable state
+		for (auto& state : command->disables) {
+			glDisable(state);
+			LOG_OPENGL("glDisable");
+		}
 		// state functions
 		for (auto& iter : command->functions) {
 			auto& func = iter.first;
@@ -72,6 +77,11 @@ namespace Renderer {
 			glDisable(state);
 			LOG_OPENGL("glDisable");
 		}
+		// // enable state
+		// for (auto& state : command->disables) {
+		// 	glEnable(state);
+		// 	LOG_OPENGL("glEnable");
+		// }
 		// reset state functions
 		for (auto& iter : command->functions) {
 			auto& func = iter.first;

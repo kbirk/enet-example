@@ -7,7 +7,7 @@ Intersection::Intersection()
 	, t(0) {
 }
 
-Intersection::Intersection(const glm::vec3& position, const glm::vec3& normal, float32_t& t)
+Intersection::Intersection(const glm::vec3& position, const glm::vec3& normal, float32_t t)
 	: hit(true)
 	, position(position)
 	, normal(normal)

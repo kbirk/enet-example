@@ -31,6 +31,7 @@ class RenderCommand {
 		void merge(const RenderCommand::Shared&);
 
 		std::vector<GLenum> enables;
+		std::vector<GLenum> disables;
 		std::map<FunctionType, std::vector<GLenum>> functions;
 		std::map<std::string, Uniform::Shared> uniforms;
 		std::map<GLenum, Texture2D::Shared> textures;

@@ -16,6 +16,12 @@ void RenderCommand::merge(const RenderCommand::Shared& command) {
 			enables.push_back(enable);
 		}
 	}
+	for (auto disable : command->disables) {
+		auto iter = std::find(disables.begin(), disables.end(), disable);
+		if (iter == disables.end()) {
+			disables.push_back(disable);
+		}
+	}
 	for (auto iter : command->functions) {
 		functions[iter.first] = iter.second;
 	}

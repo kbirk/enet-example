@@ -225,11 +225,13 @@ void StreamBuffer::read(float64_t& data) {
 	data = unpack754_64(packed);
 }
 
-// void StreamBuffer::read(std::time_t& data) {
-// 	uint64_t val = 0;
-// 	read(val);
-// 	data = val;
-// }
+#ifdef __APPLE__
+void StreamBuffer::read(std::time_t& data) {
+	uint64_t val = 0;
+	read(val);
+	data = val;
+}
+#endif
 
 void StreamBuffer::read(std::string& data) {
 	uint32_t len = 0;

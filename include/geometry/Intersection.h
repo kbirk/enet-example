@@ -13,7 +13,7 @@ class Intersection {
 	public:
 
 		Intersection();
-		Intersection(const glm::vec3&, const glm::vec3&, float32_t&);
+		Intersection(const glm::vec3&, const glm::vec3&, float32_t);
 
 		bool hit;
 		glm::vec3 position;
