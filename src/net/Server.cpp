@@ -147,14 +147,51 @@ uint32_t Server::numClients() const {
 	return host_->connectedPeers;
 }
 
-void Server::sendMessage(uint32_t id, DeliveryType type, Message::Shared msg) const {
+void Server::on(uint32_t id, RequestHandler handler) {
+	handlers_[id] = handler;
+}
+
+void Server::handleRequest(uint32_t id, uint32_t requestId, StreamBuffer::Shared stream) const {
+	auto iter = handlers_.find(requestId);
+	if (iter != handlers_.end()) {
+		auto handler = iter->second;
+		auto res = handler(id, stream);
+		sendResponse(id, requestId, res);
+	}
+}
+
+ENetPeer* Server::getClient(uint32_t id) const {
 	auto iter = clients_.find(id);
 	if (iter == clients_.end()) {
 		// no client to send to
 		LOG_WARN("No connected client with id: " << id);
+		return nullptr;
+	}
+	return iter->second;
+}
+
+void Server::sendResponse(uint id, uint32_t requestId, StreamBuffer::Shared stream) const {
+	auto client = getClient(id);
+	if (!client) {
+		// no client to send to
+		LOG_WARN("No connected client with id: " << id);
 		return;
 	}
-	auto client = iter->second;
+	auto msg = Message::alloc(
+		++currentMsgId_, // id
+		requestId, // request id
+		MessageType::DATA_RESPONSE,
+		stream);
+	sendMessage(id, DeliveryType::RELIABLE, msg);
+}
+
+void Server::sendMessage(uint32_t id, DeliveryType type, Message::Shared msg) const {
+	auto client = getClient(id);
+	if (!client) {
+		// no client to send to
+		LOG_WARN("No connected client with id: " << id);
+		return;
+	}
 	uint32_t channel = 0;
 	uint32_t flags = 0;
 	if (type == DeliveryType::RELIABLE) {
@@ -253,9 +290,12 @@ std::vector<Message::Shared> Server::poll() {
 				msgs.push_back(msg);
 
 				// handle requests
-				// if (msg->type() == MessageType::DATA_RESPONSE) {
-				// 	handleRequest(msg->requestId(), msg->stream());
-				// }
+				if (msg->type() == MessageType::DATA_REQUEST) {
+					handleRequest(
+						event.peer->incomingPeerID,
+						msg->requestId(),
+						msg->stream());
+				}
 
 				// destroy packet payload
 				enet_packet_destroy(event.packet);

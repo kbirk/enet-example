@@ -7,7 +7,6 @@
 const uint8_t SERVER_ID = 0;
 const std::time_t TIMEOUT_MS = 5000;
 const std::time_t REQUEST_INTERVAL = Time::fromSeconds(1.0/60.0);
-uint32_t id = 0;
 
 Client::Shared Client::alloc() {
 	return std::make_shared<Client>();
@@ -131,12 +130,26 @@ void Client::on(uint32_t id, RequestHandler handler) {
 	handlers_[id] = handler;
 }
 
-void Client::handleRequest(uint32_t, StreamBuffer::Shared stream) const {
-	auto iter = handlers_.find(id);
+void Client::handleRequest(uint32_t requestId, StreamBuffer::Shared stream) const {
+	auto iter = handlers_.find(requestId);
 	if (iter != handlers_.end()) {
 		auto handler = iter->second;
-		handler(stream);
+		auto res = handler(SERVER_ID, stream);
+		sendResponse(requestId, res);
 	}
+}
+
+void Client::sendResponse(uint32_t requestId, StreamBuffer::Shared stream) const {
+	if (!isConnected()) {
+		LOG_DEBUG("Client is not connected to any server");
+		return;
+	}
+	auto msg = Message::alloc(
+		++currentMsgId_, // id
+		requestId, // request id
+		MessageType::DATA_RESPONSE,
+		stream);
+	sendMessage(DeliveryType::RELIABLE, msg);
 }
 
 void Client::sendMessage(DeliveryType type, Message::Shared msg) const {
@@ -212,19 +225,6 @@ Message::Shared Client::request(uint32_t requestId, StreamBuffer::Shared stream)
 	return nullptr;
 }
 
-void Client::sendResponse(uint32_t requestId, StreamBuffer::Shared stream) const {
-	if (!isConnected()) {
-		LOG_DEBUG("Client is not connected to any server");
-		return;
-	}
-	auto msg = Message::alloc(
-		++currentMsgId_, // id
-		requestId, // request id
-		MessageType::DATA_RESPONSE,
-		stream);
-	sendMessage(DeliveryType::RELIABLE, msg);
-}
-
 std::vector<Message::Shared> Client::poll() {
 	std::vector<Message::Shared> msgs;
 	if (!isConnected()) {
@@ -257,7 +257,7 @@ std::vector<Message::Shared> Client::poll() {
 				msgs.push_back(msg);
 
 				// handle requests
-				if (msg->type() == MessageType::DATA_RESPONSE) {
+				if (msg->type() == MessageType::DATA_REQUEST) {
 					handleRequest(msg->requestId(), msg->stream());
 				}
 

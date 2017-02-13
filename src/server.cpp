@@ -70,12 +70,11 @@ void process_frame(const Frame::Shared& frame, std::time_t now, std::time_t last
 	}
 }
 
-// void send_client_info(uint32_t id) {
-// 	StreamBuffer stream;
-// 	stream << id;
-// 	auto bytes = stream.buffer();
-// 	server->send(id, DeliveryType::RELIABLE, bytes);
-// }
+StreamBuffer::Shared send_client_info(uint32_t id, StreamBuffer::Shared req) {
+	auto stream = StreamBuffer::alloc();
+	stream << id;
+	return stream;
+}
 
 void load_environment() {
 	// create terrain
@@ -105,6 +104,7 @@ int main(int argc, char** argv) {
 	frame->addPlayer(fakeID, Player::alloc(fakeID));
 
 	server = Server::alloc();
+	server->on(Net::CLIENT_INFO, send_client_info);
 	if (server->start(PORT)) {
 		return 1;
 	}

@@ -19,6 +19,7 @@ class Frame {
 
 		void addPlayer(uint32_t, Player::Shared);
 		void removePlayer(uint32_t);
+		Player::Shared player(uint32_t) const;
 		const std::map<uint32_t, Player::Shared>& players() const;
 
 		void setTimestamp(std::time_t);

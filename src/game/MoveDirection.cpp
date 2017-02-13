@@ -21,6 +21,7 @@ MoveDirection::MoveDirection(const Input::Shared& input)
 		if (iter != input->end()) {
 			auto dir = iter.value();
 			direction_ = glm::vec3(dir[0], dir[1], dir[2]);
+			direction_ = glm::normalize(direction_);
 		}
 	}
 }

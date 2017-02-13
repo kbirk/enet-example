@@ -276,11 +276,24 @@ void StreamBuffer::writeToFile(const std::string& path) const {
 }
 
 StreamBuffer::Shared merge(const StreamBuffer::Shared& a, const StreamBuffer::Shared& b) {
-	auto abuff = a->buffer();
-	auto bbuff = b->buffer();
+	std::vector<uint8_t> abuff;
+	std::vector<uint8_t> bbuff;
+	uint32_t size = 0;
+	if (a) {
+		abuff = a->buffer();
+		size += abuff.size();
+	}
+	if (b) {
+		bbuff = b->buffer();
+		size += bbuff.size();
+	}
 	auto bytes = std::vector<uint8_t>();
-	bytes.reserve(a->size() + b->size());
-	bytes.insert(bytes.end(), abuff.begin(), abuff.end());
-	bytes.insert(bytes.end(), bbuff.begin(), bbuff.end());
+	bytes.reserve(size);
+	if (a) {
+		bytes.insert(bytes.end(), abuff.begin(), abuff.end());
+	}
+	if (b) {
+		bytes.insert(bytes.end(), bbuff.begin(), bbuff.end());
+	}
 	return StreamBuffer::alloc(&bytes[0], bytes.size());
 }

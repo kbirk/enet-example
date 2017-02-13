@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-typedef std::function<StreamBuffer::Shared (StreamBuffer::Shared)> RequestHandler;
+typedef std::function<StreamBuffer::Shared (uint32_t, StreamBuffer::Shared)> RequestHandler;
 
 namespace MessageType {
 	enum Types {

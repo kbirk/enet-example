@@ -18,6 +18,14 @@ void Frame::removePlayer(uint32_t id) {
 	players_.erase(id);
 }
 
+Player::Shared Frame::player(uint32_t id) const {
+	auto iter = players_.find(id);
+	if (iter != players_.end()) {
+		return iter->second;
+	}
+	return nullptr;
+}
+
 const std::map<uint32_t, Player::Shared>& Frame::players() const {
 	return players_;
 }

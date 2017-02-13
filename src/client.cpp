@@ -44,6 +44,7 @@ Window::Shared window;
 Keyboard::Shared keyboard;
 Mouse::Shared mouse;
 Player::Shared player;
+uint32_t id = 0;
 
 VertexFragmentShader::Shared flatShader;
 VertexFragmentShader::Shared phongShader;
@@ -371,8 +372,11 @@ void process_frame(std::time_t now, std::time_t last) {
 	// interpolate frame
 	auto frame = interpolate(a, b, t);
 
-	auto RAND_PLAYER = frame->players().begin()->second;
-	camera->follow(RAND_PLAYER);
+	player = frame->player(id);
+	if (player) {
+		frame->removePlayer(id);
+		camera->follow(player);
+	}
 
 	// clear buffers
 	glClearColor(0.137f, 0.137f, 0.137f, 1.0f);
@@ -386,9 +390,14 @@ void process_frame(std::time_t now, std::time_t last) {
 		Renderer::render(render_terrain(terrain));
 	}
 
-	// draw players
+	// draw other players
 	for (auto iter : frame->players()) {
 		auto player = iter.second;
+		Renderer::render(render_phong(cube, player->transform()->matrix()));
+	}
+
+	// draw player
+	if (player) {
 		Renderer::render(render_phong(cube, player->transform()->matrix()));
 	}
 
@@ -414,15 +423,22 @@ Input::Shared move_to_click(
 	const MouseButtonEvent& event,
 	const std::map<Button, ButtonState>& mouseState,
 	const std::map<Key, KeyState>& keyboardState) {
-	if (event.type == ButtonEvent::CLICK &&
-		event.button == Button::LEFT) {
+	if (event.button == Button::LEFT &&
+		(event.type == ButtonEvent::CLICK ||
+		event.type == ButtonEvent::RELEASE)) {
 		auto size = window->size();
 		auto direction = camera->mouseToWorld(event.position, size.x, size.y);
 		auto origin = camera->transform()->translation();
 		auto intersection = environment->intersect(direction, origin);
 		if (intersection.hit) {
-			auto input = Input::alloc(InputType::MOVE_TO);
-			input->emplace("position", intersection.position);
+			Input::Shared input = nullptr;
+			if (event.type == ButtonEvent::CLICK) {
+				input = Input::alloc(InputType::MOVE_DIRECTION);
+				input->emplace("direction", intersection.position - player->transform()->translation());
+			} else {
+				input = Input::alloc(InputType::MOVE_TO);
+				input->emplace("position", intersection.position);
+			}
 			return input;
 		}
 	}
@@ -443,8 +459,8 @@ Input::Shared move_to_hold(
 			auto origin = camera->transform()->translation();
 			auto intersection = environment->intersect(direction, origin);
 			if (intersection.hit) {
-				auto input = Input::alloc(InputType::MOVE_TO);
-				input->emplace("position", intersection.position);
+				auto input = Input::alloc(InputType::MOVE_DIRECTION);
+				input->emplace("direction", intersection.position - player->transform()->translation());
 				last = now;
 				return input;
 			}
@@ -626,6 +642,15 @@ int main(int argc, char** argv) {
 
 	if (client->connect(HOST, PORT)) {
 		return 1;
+	}
+
+	auto msg = client->request(Net::CLIENT_INFO, nullptr);
+	if (!msg) {
+		return 1;
+	} else {
+		auto stream = msg->stream();
+		stream >> id;
+		LOG_INFO("player id is " << id);
 	}
 
 	std::time_t last = Time::timestamp();

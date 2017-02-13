@@ -5,6 +5,12 @@
 #include <ctime>
 #include <cstdint>
 
+namespace Net {
+	enum Types {
+		CLIENT_INFO
+	};
+}
+
 namespace Game {
 
 	// num server steps per sec
