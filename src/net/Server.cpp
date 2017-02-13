@@ -5,7 +5,7 @@
 #include "time/Time.h"
 
 const uint32_t MAX_CONNECTIONS = 64;
-const std::time_t CONNECTION_TIMEOUT_MS = 5000;
+const std::time_t TIMEOUT_MS = 5000;
 
 std::string addressToString(const ENetAddress* address) {
 	uint8_t a = (uint8_t)(address->host);
@@ -24,7 +24,8 @@ Server::Shared Server::alloc() {
 }
 
 Server::Server()
-	: host_(nullptr) {
+	: host_(nullptr)
+	, currentMsgId_(0) {
 	// initialize enet
 	// TODO: prevent this from being called multiple times
 	if (enet_initialize() != 0) {
@@ -118,7 +119,7 @@ bool Server::stop() {
 			}
 		}
 		// check timeout
-		if (Time::timestamp() - timestamp > Time::fromMilliseconds(CONNECTION_TIMEOUT_MS)) {
+		if (Time::timestamp() - timestamp > Time::fromMilliseconds(TIMEOUT_MS)) {
 			LOG_ERROR("Disconnection was not acknowledged by server, shutdown forced");
 			break;
 		}
@@ -146,7 +147,7 @@ uint32_t Server::numClients() const {
 	return host_->connectedPeers;
 }
 
-void Server::send(uint32_t id, DeliveryType type, const std::vector<uint8_t>& data) const {
+void Server::sendMessage(uint32_t id, DeliveryType type, Message::Shared msg) const {
 	auto iter = clients_.find(id);
 	if (iter == clients_.end()) {
 		// no client to send to
@@ -163,22 +164,35 @@ void Server::send(uint32_t id, DeliveryType type, const std::vector<uint8_t>& da
 		channel = UNRELIABLE_CHANNEL;
 		flags = ENET_PACKET_FLAG_UNSEQUENCED;
 	}
+
+	// get bytes
+	auto data = msg->serialize();
 	// create the packet
 	ENetPacket* p = enet_packet_create(
 		&data[0],
 		data.size(),
 		flags);
+
 	// send the packet to the peer
 	enet_peer_send(client, channel, p);
 	// flush / send the packet queue
 	enet_host_flush(host_);
 }
 
-void Server::broadcast(DeliveryType type, const std::vector<uint8_t>& data) const {
+void Server::send(uint32_t id, DeliveryType type, StreamBuffer::Shared stream) const {
+	auto msg = Message::alloc(
+		++currentMsgId_,  // id
+		MessageType::DATA,
+		stream);
+	sendMessage(id, type, msg);
+}
+
+void Server::broadcastMessage(DeliveryType type, Message::Shared msg) const {
 	if (numClients() == 0) {
 		// no clients to broadcast to
 		return;
 	}
+
 	uint32_t channel = 0;
 	uint32_t flags = 0;
 	if (type == DeliveryType::RELIABLE) {
@@ -188,15 +202,28 @@ void Server::broadcast(DeliveryType type, const std::vector<uint8_t>& data) cons
 		channel = UNRELIABLE_CHANNEL;
 		flags = ENET_PACKET_FLAG_UNSEQUENCED;
 	}
+
+	// get bytes
+	auto data = msg->serialize();
+
 	// create the packet
 	ENetPacket* p = enet_packet_create(
 		&data[0],
 		data.size(),
 		flags);
+
 	// send the packet to the peer
 	enet_host_broadcast(host_, channel, p);
 	// flush / send the packet queue
 	enet_host_flush(host_);
+}
+
+void Server::broadcast(DeliveryType type, StreamBuffer::Shared stream) const {
+	auto msg = Message::alloc(
+		++currentMsgId_,  // id
+		MessageType::DATA,
+		stream);
+	broadcastMessage(type, msg);
 }
 
 std::vector<Message::Shared> Server::poll() {
@@ -215,14 +242,21 @@ std::vector<Message::Shared> Server::poll() {
 				// 	<< event.packet->data
 				// 	<< "` was received from client_"
 				// 	<< event.peer->incomingPeerID);
-				// add msg
-				auto msg = Message::alloc(
-					event.peer->incomingPeerID,
-					MessageType::DATA,
-					StreamBuffer::alloc(
-						event.packet->data,
-						event.packet->dataLength));
+
+				auto stream = StreamBuffer::alloc(
+					event.packet->data,
+					event.packet->dataLength);
+
+				// deserialize message
+				auto msg = Message::alloc(event.peer->incomingPeerID);
+				msg->deserialize(stream);
 				msgs.push_back(msg);
+
+				// handle requests
+				// if (msg->type() == MessageType::DATA_RESPONSE) {
+				// 	handleRequest(msg->requestId(), msg->stream());
+				// }
+
 				// destroy packet payload
 				enet_packet_destroy(event.packet);
 

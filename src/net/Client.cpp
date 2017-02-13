@@ -5,14 +5,17 @@
 #include "time/Time.h"
 
 const uint8_t SERVER_ID = 0;
-const std::time_t CONNECTION_TIMEOUT_MS = 5000;
+const std::time_t TIMEOUT_MS = 5000;
+const std::time_t REQUEST_INTERVAL = Time::fromSeconds(1.0/60.0);
+uint32_t id = 0;
 
 Client::Shared Client::alloc() {
 	return std::make_shared<Client>();
 }
 
 Client::Client()
-	: host_(nullptr) {
+	: host_(nullptr)
+	, currentMsgId_(0) {
 	// initialize enet
 	// TODO: prevent this from being called multiple times
 	if (enet_initialize() != 0) {
@@ -64,7 +67,7 @@ bool Client::connect(const std::string& host, uint32_t port) {
 	// wait N for connection to succeed
 	// NOTE: we don't need to check / destroy packets because the server will be
 	// unable to send the packets without first establishing a connection
-	if (enet_host_service(host_, &event, CONNECTION_TIMEOUT_MS) > 0 &&
+	if (enet_host_service(host_, &event, TIMEOUT_MS) > 0 &&
 		event.type == ENET_EVENT_TYPE_CONNECT) {
 		// connection successful
 		LOG_DEBUG("Connection to `" << host << ":" << port << "` succeeded");
@@ -107,7 +110,7 @@ bool Client::disconnect() {
 			break;
 		}
 		// check for timeout
-		if (Time::timestamp() - timestamp > Time::fromMilliseconds(CONNECTION_TIMEOUT_MS)) {
+		if (Time::timestamp() - timestamp > Time::fromMilliseconds(TIMEOUT_MS)) {
 			break;
 		}
 	}
@@ -124,11 +127,19 @@ bool Client::isConnected() const {
 	return host_->connectedPeers > 0;
 }
 
-void Client::send(DeliveryType type, const std::vector<uint8_t>& data) const {
-	if (!isConnected()) {
-		LOG_DEBUG("Client is not connected to any server");
-		return;
+void Client::on(uint32_t id, RequestHandler handler) {
+	handlers_[id] = handler;
+}
+
+void Client::handleRequest(uint32_t, StreamBuffer::Shared stream) const {
+	auto iter = handlers_.find(id);
+	if (iter != handlers_.end()) {
+		auto handler = iter->second;
+		handler(stream);
 	}
+}
+
+void Client::sendMessage(DeliveryType type, Message::Shared msg) const {
 	uint32_t channel = 0;
 	uint32_t flags = 0;
 	if (type == DeliveryType::RELIABLE) {
@@ -138,15 +149,80 @@ void Client::send(DeliveryType type, const std::vector<uint8_t>& data) const {
 		channel = UNRELIABLE_CHANNEL;
 		flags = ENET_PACKET_FLAG_UNSEQUENCED;
 	}
+
+	// get bytes
+	auto data = msg->serialize();
+
 	// create the packet
 	ENetPacket* p = enet_packet_create(
 		&data[0],
 		data.size(),
 		flags);
+
 	// send the packet to the peer
 	enet_peer_send(server_, channel, p);
 	// flush / send the packet queue
 	enet_host_flush(host_);
+}
+
+void Client::send(DeliveryType type, StreamBuffer::Shared stream) const {
+	if (!isConnected()) {
+		LOG_DEBUG("Client is not connected to any server");
+		return;
+	}
+	auto msg = Message::alloc(
+		++currentMsgId_,  // id
+		MessageType::DATA,
+		stream);
+	sendMessage(type, msg);
+}
+
+void Client::sendRequest(uint32_t requestId, StreamBuffer::Shared stream) const {
+	auto msg = Message::alloc(
+		++currentMsgId_,  // id
+		requestId,  // request id
+		MessageType::DATA_REQUEST,
+		stream);
+	sendMessage(DeliveryType::RELIABLE, msg);
+}
+
+Message::Shared Client::request(uint32_t requestId, StreamBuffer::Shared stream) {
+	if (!isConnected()) {
+		LOG_DEBUG("Client is not connected to any server");
+		return nullptr;
+	}
+	// send request
+	sendRequest(requestId, stream);
+	// wait for response
+	auto timestamp = Time::timestamp();
+	while (true) {
+		auto msgs = poll();
+		for (auto msg : msgs) {
+			if (msg->type() == MessageType::DATA_RESPONSE &&
+				msg->requestId() == requestId) {
+				return msg;
+			}
+			queue_.push_back(msg);
+		}
+		if (Time::timestamp() - timestamp > Time::fromMilliseconds(TIMEOUT_MS)) {
+			break;
+		}
+		Time::sleep(REQUEST_INTERVAL);
+	}
+	return nullptr;
+}
+
+void Client::sendResponse(uint32_t requestId, StreamBuffer::Shared stream) const {
+	if (!isConnected()) {
+		LOG_DEBUG("Client is not connected to any server");
+		return;
+	}
+	auto msg = Message::alloc(
+		++currentMsgId_, // id
+		requestId, // request id
+		MessageType::DATA_RESPONSE,
+		stream);
+	sendMessage(DeliveryType::RELIABLE, msg);
 }
 
 std::vector<Message::Shared> Client::poll() {
@@ -169,13 +245,22 @@ std::vector<Message::Shared> Client::poll() {
 				// 	<< event.packet->data
 				// 	<< "` was received on channel "
 				// 	<< event.channelID);
-				auto msg = Message::alloc(
-					SERVER_ID,
-					MessageType::DATA,
-					StreamBuffer::alloc(
-						event.packet->data,
-						event.packet->dataLength));
+
+				// convert message to stream
+				auto stream = StreamBuffer::alloc(
+					event.packet->data,
+					event.packet->dataLength);
+
+				// deserialize message
+				auto msg = Message::alloc(SERVER_ID);
+				msg->deserialize(stream);
 				msgs.push_back(msg);
+
+				// handle requests
+				if (msg->type() == MessageType::DATA_RESPONSE) {
+					handleRequest(msg->requestId(), msg->stream());
+				}
+
 				// destroy packet payload
 				enet_packet_destroy(event.packet);
 
@@ -196,6 +281,10 @@ std::vector<Message::Shared> Client::poll() {
 			// no event
 			break;
 		}
+	}
+	if (!queue_.empty()) {
+		msgs.insert(msgs.end(), queue_.begin(), queue_.end());
+		queue_ = std::vector<Message::Shared>();
 	}
 	return msgs;
 }

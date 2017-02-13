@@ -79,6 +79,8 @@ class StreamBuffer {
 		std::vector<uint8_t> buffer_;
 };
 
+StreamBuffer::Shared merge(const StreamBuffer::Shared&, const StreamBuffer::Shared&);
+
 template<typename T>
 StreamBuffer::Shared& operator<< (StreamBuffer::Shared& stream, const std::vector<T>& data) {
 	stream->write(uint32_t(data.size()));

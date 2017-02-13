@@ -43,6 +43,7 @@ bool quit = false;
 Window::Shared window;
 Keyboard::Shared keyboard;
 Mouse::Shared mouse;
+Player::Shared player;
 
 VertexFragmentShader::Shared flatShader;
 VertexFragmentShader::Shared phongShader;
@@ -237,10 +238,10 @@ void deserialize_frame(StreamBuffer::Shared stream) {
 	return;
 }
 
-std::vector<uint8_t> serialize_input(Input::Shared input) {
+StreamBuffer::Shared serialize_input(Input::Shared input) {
 	auto stream = StreamBuffer::alloc();
 	stream << input;
-	return stream->buffer();
+	return stream;
 }
 
 std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) {
@@ -642,16 +643,21 @@ int main(int argc, char** argv) {
 		// process messages
 		for (auto msg : messages) {
 
-			if (msg->type() == MessageType::DISCONNECT) {
-				// handle the disconnect
-				handle_disconnect();
-				// ignore other messages
-				break;
+			switch (msg->type()) {
 
-			} else if (msg->type() == MessageType::DATA) {
-				// handle message
-				auto stream = msg->stream();
-				deserialize_frame(stream);
+				case MessageType::DISCONNECT:
+
+					// handle the disconnect
+					handle_disconnect();
+					// ignore other messages
+					break;
+
+				case MessageType::DATA:
+
+					// handle message
+					auto stream = msg->stream();
+					deserialize_frame(stream);
+					break;
 			}
 		}
 

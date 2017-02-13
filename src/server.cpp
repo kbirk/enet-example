@@ -37,10 +37,10 @@ void process_input(Player::Shared player, Input::Shared input) {
 	player->state()->handleInput(input);
 }
 
-std::vector<uint8_t> serialize_frame(const Frame::Shared& frame) {
+StreamBuffer::Shared serialize_frame(const Frame::Shared& frame) {
 	auto stream = StreamBuffer::alloc();
 	stream << frame;
-	return stream->buffer();
+	return stream;
 }
 
 Input::Shared deserialize_input(StreamBuffer::Shared stream) {
@@ -123,7 +123,7 @@ int main(int argc, char** argv) {
 		// process events
 		for (auto msg : messages) {
 
-			uint32_t id = msg->id();
+			uint32_t id = msg->peerId();
 
 			switch (msg->type()) {
 
