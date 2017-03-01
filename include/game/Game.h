@@ -2,9 +2,6 @@
 
 #include "Common.h"
 
-#include <ctime>
-#include <cstdint>
-
 namespace Net {
 	enum Types {
 		CLIENT_INFO

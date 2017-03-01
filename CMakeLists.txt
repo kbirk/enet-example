@@ -34,10 +34,12 @@ include_directories(${SDL2_INCLUDE_DIR})
 
 # Add source files
 set(client_sources
+	"src/enet/ENetClient"
 	"src/game/Camera"
 	"src/game/Environment"
 	"src/game/Frame"
 	"src/game/Idle"
+	"src/game/Image"
 	"src/game/MoveDirection"
 	"src/game/MoveTo"
 	"src/game/Player"
@@ -72,7 +74,7 @@ set(client_sources
 	"src/input/MouseEvent"
 	"src/input/Window"
 	"src/log/Log"
-	"src/math/Common"
+	"src/math/Math"
 	"src/math/Transform"
 	"src/net/Client"
 	"src/net/Message"
@@ -102,9 +104,11 @@ target_link_libraries(client
 
 # Add source files
 set(server_sources
+	"src/enet/ENetServer"
 	"src/game/Environment"
 	"src/game/Frame"
 	"src/game/Idle"
+	"src/game/Image"
 	"src/game/MoveDirection"
 	"src/game/MoveTo"
 	"src/game/Player"
@@ -124,7 +128,7 @@ set(server_sources
 	"src/gl/VertexBufferObject"
 	"src/input/Input"
 	"src/log/Log"
-	"src/math/Common"
+	"src/math/Math"
 	"src/math/Transform"
 	"src/net/Server"
 	"src/net/Message"

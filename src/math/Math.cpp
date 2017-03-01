@@ -1,4 +1,4 @@
-#include "math/Common.h"
+#include "math/Math.h"
 
 namespace Math {
 
@@ -6,12 +6,12 @@ namespace Math {
 		return a - (b * glm::dot(a, b));
 	}
 
-	float signedAngle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& normal) {
+	float32_t signedAngle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& normal) {
 		auto cross = glm::cross(a, b);
 		auto pa = glm::normalize(project(a, normal));
 		auto pb = glm::normalize(project(b, normal));
 		auto dot = glm::dot(pa, pb);
-		auto angle = atan2(glm::length(glm::cross(pa, pb)), dot );
+		auto angle = std::atan2(glm::length(glm::cross(pa, pb)), dot );
 		if (std::isnan(angle)) {
 			return 0;
 		}

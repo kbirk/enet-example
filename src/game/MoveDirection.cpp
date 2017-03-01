@@ -4,7 +4,7 @@
 #include "game/Idle.h"
 #include "game/MoveTo.h"
 #include "game/StateType.h"
-#include "math/Common.h"
+#include "math/Math.h"
 #include "time/Time.h"
 
 const float32_t PLAYER_SPEED = 5.0;

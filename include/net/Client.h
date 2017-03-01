@@ -1,12 +1,10 @@
 #pragma once
 
+#include "Common.h"
 #include "net/DeliveryType.h"
 #include "net/Message.h"
+#include "serial/StreamBuffer.h"
 
-#include <enet/enet.h>
-
-#include <iostream>
-#include <map>
 #include <memory>
 #include <vector>
 
@@ -15,40 +13,27 @@ class Client {
 	public:
 
 		typedef std::shared_ptr<Client> Shared;
-		static Shared alloc();
 
 		Client();
-		~Client();
+		virtual ~Client();
 
-		bool connect(const std::string&, uint32_t);
-		bool disconnect();
-		bool isConnected() const;
+		virtual bool connect(const std::string&, uint32_t) = 0;
+		virtual bool disconnect() = 0;
+		virtual bool isConnected() const = 0;
 
-		Message::Shared sendAndWait(DeliveryType, StreamBuffer::Shared) const;
+		virtual void send(DeliveryType, StreamBuffer::Shared) const = 0;
 
-		void send(DeliveryType, StreamBuffer::Shared) const;
-		Message::Shared request(uint32_t, StreamBuffer::Shared);
+		virtual Message::Shared request(uint32_t, StreamBuffer::Shared) = 0;
 
-		std::vector<Message::Shared> poll();
+		virtual std::vector<Message::Shared> poll() = 0;
 
-		void on(uint32_t, RequestHandler);
+		virtual void on(uint32_t, RequestHandler) = 0;
 
 	private:
-
-		void sendMessage(DeliveryType type, Message::Shared msg) const;
-		void sendRequest(uint32_t responseId, StreamBuffer::Shared stream) const;
-		void sendResponse(uint32_t requestId, StreamBuffer::Shared stream) const;
-		void handleRequest(uint32_t, StreamBuffer::Shared stream) const;
 
 		// prevent copy-construction
 		Client(const Client&);
 		// prevent assignment
 		Client& operator= (const Client&);
-
-		ENetHost* host_;
-		ENetPeer* server_;
-		std::vector<Message::Shared> queue_;
-		std::map<uint32_t, RequestHandler> handlers_;
-		mutable uint32_t currentMsgId_;
 
 };

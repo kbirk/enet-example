@@ -1,5 +1,6 @@
 #include "Common.h"
-#include "game/Common.h"
+#include "enet/ENetClient.h"
+#include "game/Game.h"
 #include "game/Camera.h"
 #include "game/Frame.h"
 #include "game/InputType.h"
@@ -16,7 +17,6 @@
 #include "log/Log.h"
 #include "math/Transform.h"
 #include "net/DeliveryType.h"
-#include "net/Client.h"
 #include "net/Message.h"
 #include "render/RenderCommand.h"
 #include "render/Renderer.h"
@@ -249,27 +249,25 @@ std::tuple<Frame::Shared, Frame::Shared, float32_t> get_frames(std::time_t now) 
 	//
 	//  find closest frames on either side of the delayed time such that:
 	//
-	//	  frame0->timestamp() < (now - delay) < frame0->timestamp()
+	//           frameA->timestamp() < (now - delay) < frameB->timestamp()
 	//
-	//			  interpolation window
-	//					  |
-	//					  V
-	//				 -----------
-	//				 |		 |
+	//            interpolation window
+	//                    |
+	//                    V
+	//               -----------
+	//               |         |
 	//  - - - - - - - - - - - - - - - - - - - - - - - - -
-	//  |	   |	   |   x   |	   |   x   |	   |
+	//  |       |       |   x   |       |   x   |       |
 	//
-	//  0	   1	   2	   3	   4	   5	   6	<- frames
-	//				 |		 |
-	//				 -----------
-	//					  ^			   ^
-	//					  |			   |
-	//				   delayed		  actual
-	//					time			 time
-	//					  -----------------
-	//							  ^
-	//							  |
-	//					 interpolation delay
+	//  0       1       2       3       4       5       6 <- frames
+	//                      ^               ^
+	//                      |               |
+	//                 delayed           actual
+	//                  time              time
+	//                    -----------------
+	//                            ^
+	//                            |
+	//                    interpolation delay
 
 	// we need at least 2 frames
 	if (frames.size() < 2) {
@@ -544,7 +542,6 @@ Input::Shared move(
 		// update movement direction
 		auto input = Input::alloc(InputType::MOVE_DIRECTION);
 		input->emplace("direction", direction);
-		LOG_INFO("sending input: " << glm::to_string(direction));
 		return input;
 	}
 	return nullptr;
@@ -638,7 +635,7 @@ int main(int argc, char** argv) {
 	load_axes();
 	load_environment();
 
-	client = Client::alloc();
+	client = ENetClient::alloc();
 
 	if (client->connect(HOST, PORT)) {
 		return 1;
@@ -672,17 +669,17 @@ int main(int argc, char** argv) {
 
 				case MessageType::DISCONNECT:
 
-					// handle the disconnect
-					handle_disconnect();
-					// ignore other messages
-					break;
+				// handle the disconnect
+				handle_disconnect();
+				// ignore other messages
+				break;
 
 				case MessageType::DATA:
 
-					// handle message
-					auto stream = msg->stream();
-					deserialize_frame(stream);
-					break;
+				// handle message
+				auto stream = msg->stream();
+				deserialize_frame(stream);
+				break;
 			}
 		}
 

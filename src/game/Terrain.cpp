@@ -8,7 +8,7 @@ Texture2D::Shared loadTextureRGBA(const std::string& path) {
 	// load image
 	uint32_t width, height;
 	// load and invert image y
-	std::vector<uint8_t> image = loadImage(&width, &height, path, true);
+	std::vector<uint8_t> image = loadImage(width, height, path, true);
 	// create texture
 	auto texture = Texture2D::alloc(GL_RGBA, GL_RGBA, GL_UNSIGNED_BYTE);
 	texture->upload(width, height, image, true);

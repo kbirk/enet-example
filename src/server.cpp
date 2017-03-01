@@ -1,5 +1,6 @@
 #include "Common.h"
-#include "game/Common.h"
+#include "enet/ENetServer.h"
+#include "game/Game.h"
 #include "game/Frame.h"
 #include "game/Player.h"
 #include "game/Terrain.h"
@@ -7,7 +8,6 @@
 #include "math/Transform.h"
 #include "net/DeliveryType.h"
 #include "net/Message.h"
-#include "net/Server.h"
 #include "serial/StreamBuffer.h"
 #include "time/Time.h"
 
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
 	uint32_t fakeID = 256;
 	frame->addPlayer(fakeID, Player::alloc(fakeID));
 
-	server = Server::alloc();
+	server = ENetServer::alloc();
 	server->on(Net::CLIENT_INFO, send_client_info);
 	if (server->start(PORT)) {
 		return 1;

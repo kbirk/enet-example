@@ -1,12 +1,10 @@
 #pragma once
 
+#include "Common.h"
 #include "net/DeliveryType.h"
 #include "net/Message.h"
+#include "serial/StreamBuffer.h"
 
-#include <enet/enet.h>
-
-#include <iostream>
-#include <map>
 #include <memory>
 #include <vector>
 
@@ -15,44 +13,26 @@ class Server {
 	public:
 
 		typedef std::shared_ptr<Server> Shared;
-		static Shared alloc();
 
 		Server();
-		~Server();
+		virtual ~Server();
 
-		bool start(uint32_t);
-		bool stop();
-		bool isRunning() const;
+		virtual bool start(uint32_t) = 0;
+		virtual bool stop() = 0;
+		virtual bool isRunning() const = 0;
 
-		uint32_t numClients() const;
+		virtual uint32_t numClients() const = 0;
 
-		void send(uint32_t, DeliveryType, StreamBuffer::Shared) const;
-		void broadcast(DeliveryType, StreamBuffer::Shared) const;
-		std::vector<Message::Shared> poll();
+		virtual void send(uint32_t, DeliveryType, StreamBuffer::Shared) const = 0;
+		virtual void broadcast(DeliveryType, StreamBuffer::Shared) const = 0;
+		virtual std::vector<Message::Shared> poll() = 0;
 
-		void on(uint32_t, RequestHandler);
+		virtual void on(uint32_t, RequestHandler) = 0;
 
 	private:
-
-		ENetPeer* getClient(uint32_t) const;
-		void sendMessage(uint32_t id, DeliveryType type, Message::Shared msg) const;
-		void broadcastMessage(DeliveryType type, Message::Shared msg) const;
-		void sendResponse(uint32_t, uint32_t requestId, StreamBuffer::Shared stream) const;
-		void handleRequest(uint32_t, uint32_t, StreamBuffer::Shared stream) const;
 
 		// prevent copy-construction
 		Server(const Server&);
 		// prevent assignment
 		Server& operator= (const Server&);
-
-		ENetHost* host_;
-		// NOTE: ENet allocates all peers at once and doesn't shuffle them,
-		// which leads to non-contiguous connected peers. This map
-		// will make it easier to manage them by id
-		std::map<uint32_t, ENetPeer*> clients_;
-		mutable uint32_t currentMsgId_;
-		std::vector<Message::Shared> queue_;
-		std::map<uint32_t, RequestHandler> handlers_;
 };
-
-std::string addressToString(const ENetAddress* address);
