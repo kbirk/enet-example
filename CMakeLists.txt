@@ -50,7 +50,6 @@ set(client_sources
 	"src/geometry/Cube"
 	"src/geometry/Geometry"
 	"src/geometry/Intersection"
-	"src/geometry/Quad"
 	"src/geometry/Octree"
 	"src/geometry/Sphere"
 	"src/geometry/Triangle"
