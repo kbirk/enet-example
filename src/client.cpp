@@ -73,13 +73,19 @@ std::string shader_path(const std::string& str, const std::string& type) {
 void load_shaders() {
 	// flat
 	flatShader = VertexFragmentShader::alloc();
-	flatShader->create(shader_path("flat", "vert"), shader_path("flat", "frag"));
+	flatShader->create(
+		shader_path("flat", "vert"),
+		shader_path("flat", "frag"));
 	// phong
 	phongShader = VertexFragmentShader::alloc();
-	phongShader->create(shader_path("phong", "vert"), shader_path("phong", "frag"));
+	phongShader->create(
+		shader_path("phong", "vert"),
+		shader_path("phong", "frag"));
 	// terrain
 	terrainShader = VertexFragmentShader::alloc();
-	terrainShader->create(shader_path("terrain", "vert"), shader_path("terrain", "frag"));
+	terrainShader->create(
+		shader_path("terrain", "vert"),
+		shader_path("terrain", "frag"));
 }
 
 void load_cube() {

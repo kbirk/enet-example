@@ -22,9 +22,7 @@ class Client {
 		virtual bool isConnected() const = 0;
 
 		virtual void send(DeliveryType, StreamBuffer::Shared) const = 0;
-
 		virtual Message::Shared request(uint32_t, StreamBuffer::Shared) = 0;
-
 		virtual std::vector<Message::Shared> poll() = 0;
 
 		virtual void on(uint32_t, RequestHandler) = 0;

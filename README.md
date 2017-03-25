@@ -1,6 +1,6 @@
 # ENet Example
 
-> A simple ENet client/server implementation using ENet.
+> A client and server implementation using ENet.
 
 ## Dependencies
 

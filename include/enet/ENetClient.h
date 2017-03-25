@@ -26,9 +26,7 @@ class ENetClient : public Client {
 		bool isConnected() const;
 
 		void send(DeliveryType, StreamBuffer::Shared) const;
-
 		Message::Shared request(uint32_t, StreamBuffer::Shared);
-
 		std::vector<Message::Shared> poll();
 
 		void on(uint32_t, RequestHandler);
