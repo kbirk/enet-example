@@ -144,6 +144,11 @@ target_link_libraries(server
 	${SDL2_LIBRARY}
 	${OPENGL_LIBRARIES})
 
+# Additional target to perform clang-format, requires clang-format
+file(GLOB_RECURSE all_sources include/*.h src/*.cpp)
+add_custom_target(fmt
+    COMMAND clang-format -style=WebKit -i ${all_sources})
+
 # Copy resource dir to build
 file(COPY
 	${CMAKE_CURRENT_SOURCE_DIR}/resources/

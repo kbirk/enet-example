@@ -9,22 +9,20 @@
 
 class SDL2Keyboard : public Keyboard {
 
-	friend class SDL2Window;
+    friend class SDL2Window;
 
-	public:
+public:
+    typedef std::shared_ptr<SDL2Keyboard> Shared;
+    static Shared alloc();
 
-		typedef std::shared_ptr<SDL2Keyboard> Shared;
-		static Shared alloc();
+    SDL2Keyboard();
 
-		SDL2Keyboard();
+    const std::map<Key, KeyState>& state() const;
 
-		const std::map<Key, KeyState>& state() const;
+private:
+    KeyEvent translateKeyEvent(const SDL_Event*) const;
+    void updateState(const KeyboardEvent&);
+    void handleKeyboardEvent(const SDL_Event*, const std::map<Button, ButtonState>&);
 
-	private:
-
-		KeyEvent translateKeyEvent(const SDL_Event*) const;
-		void updateState(const KeyboardEvent&);
-		void handleKeyboardEvent(const SDL_Event*, const std::map<Button, ButtonState>&);
-
-		std::map<Key, KeyState> state_;
+    std::map<Key, KeyState> state_;
 };

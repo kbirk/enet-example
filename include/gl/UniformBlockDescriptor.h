@@ -9,35 +9,33 @@
 
 class UniformBlockDescriptor {
 
-	public:
+public:
+    typedef std::shared_ptr<UniformBlockDescriptor> Shared;
+    static Shared alloc(
+        const std::string&,
+        const GLint,
+        const GLint,
+        const std::map<std::string, GLint>&);
 
-		typedef std::shared_ptr<UniformBlockDescriptor> Shared;
-		static Shared alloc(
-			const std::string&,
-			const GLint,
-			const GLint,
-			const std::map<std::string, GLint>&);
+    UniformBlockDescriptor(
+        const std::string&,
+        const GLint,
+        const GLint,
+        const std::map<std::string, GLint>&);
 
-		UniformBlockDescriptor(
-			const std::string&,
-			const GLint,
-			const GLint,
-			const std::map<std::string, GLint>&);
+    GLuint blockIndex() const;
+    GLint alignedBlockSize() const;
+    GLint unAlignedBlockSize() const;
+    GLint offset(const std::string&) const;
 
-		GLuint blockIndex() const;
-		GLint alignedBlockSize() const;
-		GLint unAlignedBlockSize() const;
-		GLint offset(const std::string&) const;
+private:
+    // prevent copy-construction
+    UniformBlockDescriptor(const UniformBlockDescriptor&);
+    // prevent assignment
+    UniformBlockDescriptor& operator=(const UniformBlockDescriptor&);
 
-	private:
-
-		// prevent copy-construction
-		UniformBlockDescriptor(const UniformBlockDescriptor&);
-		// prevent assignment
-		UniformBlockDescriptor& operator= (const UniformBlockDescriptor&);
-
-		std::string blockName_;
-		GLuint blockIndex_;
-		GLint blockSize_;
-		std::map<std::string, GLint> offsets_;
+    std::string blockName_;
+    GLuint blockIndex_;
+    GLint blockSize_;
+    std::map<std::string, GLint> offsets_;
 };

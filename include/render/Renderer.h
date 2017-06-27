@@ -7,7 +7,6 @@
 
 namespace Renderer {
 
-	void render(const RenderCommand::Shared& command);
-	void render(const std::vector<RenderCommand::Shared>&);
-
+void render(const RenderCommand::Shared& command);
+void render(const std::vector<RenderCommand::Shared>&);
 }

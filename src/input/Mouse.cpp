@@ -1,66 +1,75 @@
 #include "input/Mouse.h"
 
-Mouse::Mouse() {
+Mouse::Mouse()
+{
 }
 
-Mouse::~Mouse() {
+Mouse::~Mouse()
+{
 }
 
-void Mouse::add(MouseMoveHandler handler) {
-	moveHandlers_.push_back(handler);
+void Mouse::add(MouseMoveHandler handler)
+{
+    moveHandlers_.push_back(handler);
 }
 
-void Mouse::add(MouseButtonHandler handler) {
-	buttonHandlers_.push_back(handler);
+void Mouse::add(MouseButtonHandler handler)
+{
+    buttonHandlers_.push_back(handler);
 }
 
-void Mouse::add(MouseScrollHandler handler) {
-	scrollHandlers_.push_back(handler);
+void Mouse::add(MouseScrollHandler handler)
+{
+    scrollHandlers_.push_back(handler);
 }
 
-std::vector<Input::Shared> Mouse::poll() {
-	auto input = input_;
-	input_ = std::vector<Input::Shared>();
-	return input;
-}
-
-void Mouse::dispatchEvent(
-	const MouseMoveEvent& event,
-	const std::map<Button, ButtonState>& mouseState,
-	const std::map<Key, KeyState>& keyboardState) {
-	// dispatch events
-	for (auto handler : moveHandlers_) {
-		auto res = handler(event, mouseState, keyboardState);
-		if (res) {
-			input_.push_back(res);
-		}
-	}
+std::vector<Input::Shared> Mouse::poll()
+{
+    auto input = input_;
+    input_ = std::vector<Input::Shared>();
+    return input;
 }
 
 void Mouse::dispatchEvent(
-	const MouseButtonEvent& event,
-	const std::map<Button, ButtonState>& mouseState,
-	const std::map<Key, KeyState>& keyboardState) {
-	// dispatch events
-	for (auto handler : buttonHandlers_) {
-		auto res = handler(event, mouseState, keyboardState);
-		if (res) {
-			input_.push_back(res);
-		}
-	}
+    const MouseMoveEvent& event,
+    const std::map<Button, ButtonState>& mouseState,
+    const std::map<Key, KeyState>& keyboardState)
+{
+    // dispatch events
+    for (auto handler : moveHandlers_) {
+        auto res = handler(event, mouseState, keyboardState);
+        if (res) {
+            input_.push_back(res);
+        }
+    }
 }
 
 void Mouse::dispatchEvent(
-	const MouseScrollEvent& event,
-	const std::map<Button, ButtonState>& mouseState,
-	const std::map<Key, KeyState>& keyboardState) {
-	// dispatch events
-	for (auto handler : scrollHandlers_) {
-		auto res = handler(event, mouseState, keyboardState);
-		if (res) {
-			input_.push_back(res);
-		}
-	}
+    const MouseButtonEvent& event,
+    const std::map<Button, ButtonState>& mouseState,
+    const std::map<Key, KeyState>& keyboardState)
+{
+    // dispatch events
+    for (auto handler : buttonHandlers_) {
+        auto res = handler(event, mouseState, keyboardState);
+        if (res) {
+            input_.push_back(res);
+        }
+    }
+}
+
+void Mouse::dispatchEvent(
+    const MouseScrollEvent& event,
+    const std::map<Button, ButtonState>& mouseState,
+    const std::map<Key, KeyState>& keyboardState)
+{
+    // dispatch events
+    for (auto handler : scrollHandlers_) {
+        auto res = handler(event, mouseState, keyboardState);
+        if (res) {
+            input_.push_back(res);
+        }
+    }
 }
 
 // const float32_t DEFAULT_DISTANCE = 10.0f;

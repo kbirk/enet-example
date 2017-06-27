@@ -8,27 +8,25 @@
 
 class Viewport {
 
-	public:
+public:
+    typedef std::shared_ptr<Viewport> Shared;
+    static Shared alloc(uint32_t, uint32_t, uint32_t, uint32_t);
 
-		typedef std::shared_ptr<Viewport> Shared;
-		static Shared alloc(uint32_t, uint32_t, uint32_t, uint32_t);
+    Viewport(uint32_t, uint32_t, uint32_t, uint32_t);
 
-		Viewport(uint32_t, uint32_t, uint32_t, uint32_t);
+    void resize(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
 
-		void resize(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+    uint32_t x;
+    uint32_t y;
+    uint32_t width;
+    uint32_t height;
 
-		uint32_t x;
-		uint32_t y;
-		uint32_t width;
-		uint32_t height;
+    friend bool operator==(const Viewport::Shared&, const Viewport::Shared&);
+    friend bool operator!=(const Viewport::Shared&, const Viewport::Shared&);
 
-		friend bool operator== (const Viewport::Shared&, const Viewport::Shared&);
-		friend bool operator!= (const Viewport::Shared&, const Viewport::Shared&);
-
-	private:
-
-		// prevent copy-construction
-		Viewport(const Viewport&);
-		// prevent assignment
-		Viewport& operator= (const Viewport&);
+private:
+    // prevent copy-construction
+    Viewport(const Viewport&);
+    // prevent assignment
+    Viewport& operator=(const Viewport&);
 };

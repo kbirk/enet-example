@@ -9,13 +9,12 @@
 
 class VertexFragmentShader : public Shader {
 
-	public:
+public:
+    typedef std::shared_ptr<VertexFragmentShader> Shared;
+    static Shared alloc();
 
-		typedef std::shared_ptr<VertexFragmentShader> Shared;
-		static Shared alloc();
+    VertexFragmentShader();
 
-		VertexFragmentShader();
-
-		bool create(const std::string& vert, const std::string& frag);
-		void setUniform(const std::string&, const Uniform::Shared&, bool = false);
+    bool create(const std::string& vert, const std::string& frag);
+    void setUniform(const std::string&, const Uniform::Shared&, bool = false);
 };

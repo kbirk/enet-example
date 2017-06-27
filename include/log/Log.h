@@ -1,9 +1,9 @@
 #pragma once
 
 #include <cstring>
-#include <iostream>
-#include <iomanip>
 #include <ctime>
+#include <iomanip>
+#include <iostream>
 #include <sstream>
 
 /**
@@ -36,42 +36,47 @@
 /**
  * Logging structs and templates
  */
-struct None {};
-
-template<typename List>
-struct LogData {
-	List list;
+struct None {
 };
 
-template<typename Begin, typename Value>
-LogData<std::pair<Begin, const Value&>> operator << (LogData<Begin> begin, const Value& value) {
-	return {{begin.list, value}};
+template <typename List>
+struct LogData {
+    List list;
+};
+
+template <typename Begin, typename Value>
+LogData<std::pair<Begin, const Value&> > operator<<(LogData<Begin> begin, const Value& value)
+{
+    return { { begin.list, value } };
 }
 
-template<typename Begin, size_t n>
-LogData<std::pair<Begin, const char*>> operator << (LogData<Begin> begin, const char (&value)[n]) {
-	return {{begin.list, value}};
+template <typename Begin, size_t n>
+LogData<std::pair<Begin, const char*> > operator<<(LogData<Begin> begin, const char (&value)[n])
+{
+    return { { begin.list, value } };
 }
 
 inline void logRecursive(None) {}
 
-template<typename Begin, typename Last>
-void logRecursive(const std::pair<Begin, Last>& data) {
-	logRecursive(data.first);
-	LOGGING_OUT << data.second;
+template <typename Begin, typename Last>
+void logRecursive(const std::pair<Begin, Last>& data)
+{
+    logRecursive(data.first);
+    LOGGING_OUT << data.second;
 }
 
-template<typename List>
-void log(const char* level, const char* file, const char* time, int32_t line, const LogData<List>& data) {
-	LOGGING_OUT << BLACK_LOG_COLOR;
-	LOGGING_OUT << "[ " << time << " ] ";
-	LOGGING_OUT << level << " ";
-	LOGGING_OUT << DEFAULT_LOG_COLOR;
-	logRecursive(data.list);
-	LOGGING_OUT << " ";
-	LOGGING_OUT << BLUE_LOG_COLOR;
-	LOGGING_OUT << "(" << file << ":" << line << ")";
-	LOGGING_OUT << std::endl;
+template <typename List>
+void log(const char* level, const char* file, const char* time, int32_t line, const LogData<List>& data)
+{
+    LOGGING_OUT << BLACK_LOG_COLOR;
+    LOGGING_OUT << "[ " << time << " ] ";
+    LOGGING_OUT << level << " ";
+    LOGGING_OUT << DEFAULT_LOG_COLOR;
+    logRecursive(data.list);
+    LOGGING_OUT << " ";
+    LOGGING_OUT << BLUE_LOG_COLOR;
+    LOGGING_OUT << "(" << file << ":" << line << ")";
+    LOGGING_OUT << std::endl;
 }
 
 std::string getTime();
@@ -93,25 +98,25 @@ std::string getTime();
  * Logging macros based on logging level
  */
 #if LOGGING_LEVEL <= DEBUG_LEVEL
-	#define LOG_DEBUG(x) (log(DEBUG_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
+#define LOG_DEBUG(x) (log(DEBUG_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
 #else
-	#define LOG_DEBUG(x)
+#define LOG_DEBUG(x)
 #endif
 
 #if LOGGING_LEVEL <= INFO_LEVEL
-	#define LOG_INFO(x) (log(INFO_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
+#define LOG_INFO(x) (log(INFO_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
 #else
-	#define LOG_INFO(x)
+#define LOG_INFO(x)
 #endif
 
 #if LOGGING_LEVEL <= WARN_LEVEL
-	#define LOG_WARN(x) (log(WARN_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
+#define LOG_WARN(x) (log(WARN_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
 #else
-	#define LOG_WARN(x)
+#define LOG_WARN(x)
 #endif
 
 #if LOGGING_LEVEL <= ERROR_LEVEL
-	#define LOG_ERROR(x) (log(ERROR_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
+#define LOG_ERROR(x) (log(ERROR_STR, __FILENAME__, getTime().c_str(), __LINE__, LogData<None>() << x))
 #else
-	#define LOG_ERROR(x)
+#define LOG_ERROR(x)
 #endif

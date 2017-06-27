@@ -9,24 +9,20 @@
 
 class MoveDirection : public State {
 
-	public:
+public:
+    typedef std::shared_ptr<MoveDirection> Shared;
+    static Shared alloc(const Input::Shared& = nullptr);
 
-		typedef std::shared_ptr<MoveDirection> Shared;
-		static Shared alloc(const Input::Shared& = nullptr);
+    explicit MoveDirection(const Input::Shared& = nullptr);
 
-		explicit
-		MoveDirection(const Input::Shared& = nullptr);
+    State::Shared handleInput(const Input::Shared&);
+    State::Shared update(Player::Shared&, Environment::Shared, std::time_t);
 
-		State::Shared handleInput(const Input::Shared&);
-		State::Shared update(Player::Shared&, Environment::Shared, std::time_t);
+protected:
+    StreamBuffer::Shared& serialize(StreamBuffer::Shared&) const;
+    StreamBuffer::Shared& deserialize(StreamBuffer::Shared&);
 
-	protected:
-
-		StreamBuffer::Shared& serialize(StreamBuffer::Shared&) const;
-		StreamBuffer::Shared& deserialize(StreamBuffer::Shared&);
-
-	private:
-
-		std::time_t timestamp_;
-		glm::vec3 direction_;
+private:
+    std::time_t timestamp_;
+    glm::vec3 direction_;
 };

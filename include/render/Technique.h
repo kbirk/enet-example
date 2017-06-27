@@ -2,8 +2,8 @@
 
 #include "Common.h"
 #include "gl/Shader.h"
-#include "gl/Viewport.h"
 #include "gl/Uniform.h"
+#include "gl/Viewport.h"
 #include "render/RenderCommand.h"
 
 #include <map>
@@ -12,31 +12,29 @@
 
 class Technique {
 
-	public:
+public:
+    typedef std::shared_ptr<Technique> Shared;
+    static Shared alloc();
 
-		typedef std::shared_ptr<Technique> Shared;
-		static Shared alloc();
+    Technique();
 
-		Technique();
+    void setShader(Shader::Shared);
+    void setUniform(const std::string&, Uniform::Shared);
+    void setFunction(FunctionType, const std::vector<GLenum>&);
+    void setViewport(Viewport::Shared);
+    void enable(GLenum);
 
-		void setShader(Shader::Shared);
-		void setUniform(const std::string&, Uniform::Shared);
-		void setFunction(FunctionType, const std::vector<GLenum>&);
-		void setViewport(Viewport::Shared);
-		void enable(GLenum);
+    RenderCommand::Shared render() const;
 
-		RenderCommand::Shared render() const;
+private:
+    // prevent copy-construction
+    Technique(const Technique&);
+    // prevent assignment
+    Technique& operator=(const Technique&);
 
-	private:
-
-		// prevent copy-construction
-		Technique(const Technique&);
-		// prevent assignment
-		Technique& operator= (const Technique&);
-
-		Shader::Shared shader_;
-		Viewport::Shared viewport_;
-		std::vector<GLenum> enables_;
-		std::map<FunctionType, std::vector<GLenum>> functions_;
-		std::map<std::string, Uniform::Shared> uniforms_;
+    Shader::Shared shader_;
+    Viewport::Shared viewport_;
+    std::vector<GLenum> enables_;
+    std::map<FunctionType, std::vector<GLenum> > functions_;
+    std::map<std::string, Uniform::Shared> uniforms_;
 };

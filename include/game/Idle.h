@@ -9,20 +9,16 @@
 
 class Idle : public State {
 
-	public:
+public:
+    typedef std::shared_ptr<Idle> Shared;
+    static Shared alloc(const Input::Shared& = nullptr);
 
-		typedef std::shared_ptr<Idle> Shared;
-		static Shared alloc(const Input::Shared& = nullptr);
+    explicit Idle(const Input::Shared& = nullptr);
 
-		explicit
-		Idle(const Input::Shared& = nullptr);
+    State::Shared handleInput(const Input::Shared&);
+    State::Shared update(Player::Shared&, Environment::Shared, std::time_t);
 
-		State::Shared handleInput(const Input::Shared&);
-		State::Shared update(Player::Shared&, Environment::Shared, std::time_t);
-
-	protected:
-
-		StreamBuffer::Shared& serialize(StreamBuffer::Shared&) const;
-		StreamBuffer::Shared& deserialize(StreamBuffer::Shared&);
-
+protected:
+    StreamBuffer::Shared& serialize(StreamBuffer::Shared&) const;
+    StreamBuffer::Shared& deserialize(StreamBuffer::Shared&);
 };

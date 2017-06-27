@@ -15,6 +15,7 @@ sudo aptitude install cmake
 Install Dependencies:
 
 ```bash
+sudo aptitude install clang-format
 sudo aptitude install libglm-dev
 sudo aptitude install libsdl2-dev
 sudo aptitude install libenet-dev
@@ -32,6 +33,7 @@ brew install cmake
 Install Dependencies:
 
 ```bash
+brew install clang-format
 brew install glm
 brew install sdl2
 brew install enet

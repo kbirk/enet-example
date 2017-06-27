@@ -9,30 +9,27 @@ class Player;
 
 class StateMachine {
 
-	public:
+public:
+    typedef std::shared_ptr<StateMachine> Shared;
+    static Shared alloc();
 
-		typedef std::shared_ptr<StateMachine> Shared;
-		static Shared alloc();
+    StateMachine();
 
-		StateMachine();
+    const State::Shared& current() const;
 
-		const State::Shared& current() const;
+    void set(State::Shared);
 
-		void set(State::Shared);
+    void handleInput(const Input::Shared&);
+    void update(
+        std::shared_ptr<Player>,
+        Environment::Shared,
+        std::time_t);
 
-		void handleInput(const Input::Shared&);
-		void update(
-			std::shared_ptr<Player>,
-			Environment::Shared,
-			std::time_t);
+private:
+    // prevent copy-construction
+    StateMachine(const StateMachine&);
+    // prevent assignment
+    StateMachine& operator=(const StateMachine&);
 
-	private:
-
-		// prevent copy-construction
-		StateMachine(const StateMachine&);
-		// prevent assignment
-		StateMachine& operator= (const StateMachine&);
-
-		State::Shared current_;
-
+    State::Shared current_;
 };

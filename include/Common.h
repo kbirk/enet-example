@@ -17,14 +17,14 @@ typedef double float64_t;
  * Define PI
  */
 #ifndef M_PI
-	#define M_PI 3.14159265358979f
+#define M_PI 3.14159265358979f
 #endif
 
 /**
  * Define EPSILON
  */
 #ifndef M_EPSILON
-	#define M_EPSILON 0.000001f
+#define M_EPSILON 0.000001f
 #endif
 
 /**
@@ -33,6 +33,6 @@ typedef double float64_t;
 template <typename T>
 typename T::mapped_type get(T const& map, typename T::key_type const& key)
 {
-	typename T::const_iterator iter(map.find(key));
-	return iter != map.end() ? iter->second : typename T::mapped_type();
+    typename T::const_iterator iter(map.find(key));
+    return iter != map.end() ? iter->second : typename T::mapped_type();
 }

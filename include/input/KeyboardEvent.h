@@ -5,9 +5,9 @@
 
 struct KeyboardEvent {
 
-	KeyboardEvent(KeyEvent, Key, std::time_t);
+    KeyboardEvent(KeyEvent, Key, std::time_t);
 
-	KeyEvent type;
-	Key key;
-	std::time_t timestamp;
+    KeyEvent type;
+    Key key;
+    std::time_t timestamp;
 };

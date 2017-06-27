@@ -9,24 +9,22 @@
 
 class SDL2Mouse : public Mouse {
 
-	friend class SDL2Window;
+    friend class SDL2Window;
 
-	public:
+public:
+    typedef std::shared_ptr<SDL2Mouse> Shared;
+    static Shared alloc();
 
-		typedef std::shared_ptr<SDL2Mouse> Shared;
-		static Shared alloc();
+    SDL2Mouse();
 
-		SDL2Mouse();
+    const std::map<Button, ButtonState>& state() const;
 
-		const std::map<Button, ButtonState>& state() const;
+private:
+    ButtonEvent translateButtonEvent(const SDL_Event*) const;
+    void updateState(const MouseButtonEvent&);
+    void handleMouseButtonEvent(const SDL_Event*, const std::map<Key, KeyState>&);
+    void handleMouseMoveEvent(const SDL_Event*, const std::map<Key, KeyState>&);
+    void handleMouseScrollEvent(const SDL_Event*, const std::map<Key, KeyState>&);
 
-	private:
-
-		ButtonEvent translateButtonEvent(const SDL_Event*) const;
-		void updateState(const MouseButtonEvent&);
-		void handleMouseButtonEvent(const SDL_Event*, const std::map<Key, KeyState>&);
-		void handleMouseMoveEvent(const SDL_Event*, const std::map<Key, KeyState>&);
-		void handleMouseScrollEvent(const SDL_Event*, const std::map<Key, KeyState>&);
-
-		std::map<Button, ButtonState> state_;
+    std::map<Button, ButtonState> state_;
 };
