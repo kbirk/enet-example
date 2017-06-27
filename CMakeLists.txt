@@ -147,7 +147,7 @@ target_link_libraries(server
 # Additional target to perform clang-format, requires clang-format
 file(GLOB_RECURSE all_sources include/*.h src/*.cpp)
 add_custom_target(fmt
-    COMMAND clang-format -style=WebKit -i ${all_sources})
+	COMMAND clang-format -style=WebKit -i ${all_sources})
 
 # Copy resource dir to build
 file(COPY
