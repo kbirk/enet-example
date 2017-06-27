@@ -40,7 +40,7 @@ State::Shared MoveTo::handleInput(const Input::Shared& input)
         return Idle::alloc();
 
         // case InputType::JUMP:
-        // 	return Jump::alloc(input);
+        //     return Jump::alloc(input);
     }
     return nullptr;
 }

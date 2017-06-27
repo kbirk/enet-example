@@ -11,8 +11,8 @@ out vec3 vMVPosition;
 out vec3 vMVNormal;
 
 void main() {
-	vec4 mvPos = uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
-	gl_Position = uProjectionMatrix * mvPos;
-	vMVPosition = vec3(mvPos) / mvPos.w;
-	vMVNormal = mat3(uViewMatrix * uModelMatrix) * aNormal;
+    vec4 mvPos = uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
+    gl_Position = uProjectionMatrix * mvPos;
+    vMVPosition = vec3(mvPos) / mvPos.w;
+    vMVNormal = mat3(uViewMatrix * uModelMatrix) * aNormal;
 }

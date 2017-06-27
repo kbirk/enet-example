@@ -15,10 +15,10 @@ out vec2 vTexCoord;
 out vec4 vWeights;
 
 void main() {
-	vec4 mvPos = uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
-	gl_Position = uProjectionMatrix * mvPos;
-	vMVPosition = vec3(mvPos) / mvPos.w;
-	vMVNormal = mat3(uViewMatrix * uModelMatrix) * aNormal;
-	vTexCoord = aTexCoord;
-	vWeights = aWeights;
+    vec4 mvPos = uViewMatrix * uModelMatrix * vec4(aPosition, 1.0);
+    gl_Position = uProjectionMatrix * mvPos;
+    vMVPosition = vec3(mvPos) / mvPos.w;
+    vMVNormal = mat3(uViewMatrix * uModelMatrix) * aNormal;
+    vTexCoord = aTexCoord;
+    vWeights = aWeights;
 }

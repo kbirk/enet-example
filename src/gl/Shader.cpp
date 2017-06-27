@@ -251,7 +251,7 @@ void Shader::queryUniforms()
         ////
         LOG_INFO("Uniform block name " << blockName << " index " << blockIndex << " size " << blockSize);
         for (auto& pair : offsets) {
-            LOG_INFO("	" << pair.first << " offset " << pair.second);
+            LOG_INFO("    " << pair.first << " offset " << pair.second);
         }
         ////
 

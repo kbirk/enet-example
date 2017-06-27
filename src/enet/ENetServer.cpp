@@ -290,11 +290,11 @@ std::vector<Message::Shared> ENetServer::poll()
             if (event.type == ENET_EVENT_TYPE_RECEIVE) {
                 // received a packet
                 // LOG_DEBUG("A packet of length "
-                // 	<< event.packet->dataLength
-                // 	<< " containing `"
-                // 	<< event.packet->data
-                // 	<< "` was received from client_"
-                // 	<< event.peer->incomingPeerID);
+                //     << event.packet->dataLength
+                //     << " containing `"
+                //     << event.packet->data
+                //     << "` was received from client_"
+                //     << event.peer->incomingPeerID);
 
                 auto stream = StreamBuffer::alloc(
                     event.packet->data,

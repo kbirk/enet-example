@@ -80,27 +80,27 @@ void Mouse::dispatchEvent(
 // const float32_t Y_FACTOR = -0.2;
 //
 // void Mouse::handleMove(const MouseEvent& event, const std::map<Button, ButtonState>& state) {
-// 	if (state[Button::LEFT]) {
-// 		float32_t xAngle = event.delta.x * X_FACTOR * (M_PI / 180.0);
-// 		float32_t yAngle = event.delta.y * Y_FACTOR * (M_PI / 180.0);
-// 		// camera->setTranslation(glm::vec3(0, 0, 0));
-// 		// camera->rotateGlobal(xAngle, glm::vec3(0, 1, 0));
-// 		// camera->rotateLocal(yAngle, glm::vec3(1, 0, 0));
-// 		// camera->translateLocal(glm::vec3(0, 0, distance));
-// 		input_[InputType::CAMERA_ROTATE] = CameraRotate::alloc(xAngle, yAngle);
-// 	}
+//     if (state[Button::LEFT]) {
+//         float32_t xAngle = event.delta.x * X_FACTOR * (M_PI / 180.0);
+//         float32_t yAngle = event.delta.y * Y_FACTOR * (M_PI / 180.0);
+//         // camera->setTranslation(glm::vec3(0, 0, 0));
+//         // camera->rotateGlobal(xAngle, glm::vec3(0, 1, 0));
+//         // camera->rotateLocal(yAngle, glm::vec3(1, 0, 0));
+//         // camera->translateLocal(glm::vec3(0, 0, distance));
+//         input_[InputType::CAMERA_ROTATE] = CameraRotate::alloc(xAngle, yAngle);
+//     }
 // }
 //
 // void Mouse::handleScroll(const MouseEvent& event, const std::map<KeyType, KeyState>& state) {
-// 	float32_t delta = (event.delta * -SCROLL_FACTOR);
-// 	// distance += delta;
-// 	// distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
-// 	// camera->setTranslation(glm::vec3(0, 0, 0));
-// 	// camera->translateLocal(glm::vec3(0, 0, distance));
-// 	input_[InputType::CAMERA_ZOOM] = CameraZoom::alloc(delta);
+//     float32_t delta = (event.delta * -SCROLL_FACTOR);
+//     // distance += delta;
+//     // distance = std::min(std::max(distance, MIN_DISTANCE), MAX_DISTANCE);
+//     // camera->setTranslation(glm::vec3(0, 0, 0));
+//     // camera->translateLocal(glm::vec3(0, 0, distance));
+//     input_[InputType::CAMERA_ZOOM] = CameraZoom::alloc(delta);
 // }
 //
 // void Mouse::handleEvent(const MouseEvent& event, const std::map<KeyType, KeyState>& state) {
-// 	handleMove(event, state);
-// 	handleScroll(event, state);
+//     handleMove(event, state);
+//     handleScroll(event, state);
 // }

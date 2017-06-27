@@ -18,21 +18,21 @@ out vec4 oColor;
 
 void main() {
 
-	vec4 texelColor = vec4(0.0, 0.0, 0.0, 1.0);
-	texelColor += vWeights.x * texture(uTextureSampler0, vec2(vTexCoord.x, vTexCoord.y));
-	texelColor += vWeights.y * texture(uTextureSampler1, vec2(vTexCoord.x, vTexCoord.y));
-	texelColor += vWeights.z * texture(uTextureSampler2, vec2(vTexCoord.x, vTexCoord.y));
-	texelColor += vWeights.w * texture(uTextureSampler3, vec2(vTexCoord.x, vTexCoord.y));
+    vec4 texelColor = vec4(0.0, 0.0, 0.0, 1.0);
+    texelColor += vWeights.x * texture(uTextureSampler0, vec2(vTexCoord.x, vTexCoord.y));
+    texelColor += vWeights.y * texture(uTextureSampler1, vec2(vTexCoord.x, vTexCoord.y));
+    texelColor += vWeights.z * texture(uTextureSampler2, vec2(vTexCoord.x, vTexCoord.y));
+    texelColor += vWeights.w * texture(uTextureSampler3, vec2(vTexCoord.x, vTexCoord.y));
 
-	vec3 normal = normalize(vMVNormal);
-	vec3 vLight = vec3(uViewMatrix * vec4(uLightPosition0, 1.0));
-	vec3 lightDir = normalize(vLight - vMVPosition);
+    vec3 normal = normalize(vMVNormal);
+    vec3 vLight = vec3(uViewMatrix * vec4(uLightPosition0, 1.0));
+    vec3 lightDir = normalize(vLight - vMVPosition);
 
-	float ambient = 0.4;
-	float diffuse = max(dot(lightDir, normal), 0.0);
+    float ambient = 0.4;
+    float diffuse = max(dot(lightDir, normal), 0.0);
 
-	oColor = vec4(
-		ambient * texelColor.rgb +
-		diffuse * texelColor.rgb,
-		texelColor.a);
+    oColor = vec4(
+        ambient * texelColor.rgb +
+        diffuse * texelColor.rgb,
+        texelColor.a);
 }

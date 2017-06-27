@@ -80,8 +80,8 @@ void render(const RenderCommand::Shared& command)
     }
     // // enable state
     // for (auto& state : command->disables) {
-    // 	glEnable(state);
-    // 	LOG_OPENGL("glEnable");
+    //     glEnable(state);
+    //     LOG_OPENGL("glEnable");
     // }
     // reset state functions
     for (auto& iter : command->functions) {

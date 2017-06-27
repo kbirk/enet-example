@@ -255,11 +255,11 @@ std::vector<Message::Shared> ENetClient::poll()
             if (event.type == ENET_EVENT_TYPE_RECEIVE) {
                 // received a packet
                 // LOG_DEBUG("A packet of length "
-                // 	<< event.packet->dataLength
-                // 	<< " containing `"
-                // 	<< event.packet->data
-                // 	<< "` was received on channel "
-                // 	<< event.channelID);
+                //     << event.packet->dataLength
+                //     << " containing `"
+                //     << event.packet->data
+                //     << "` was received on channel "
+                //     << event.channelID);
 
                 // convert message to stream
                 auto stream = StreamBuffer::alloc(
